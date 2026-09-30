@@ -72,6 +72,16 @@ def _dequantize_lut(
             else np.concatenate((lut[128:], lut[:128]))
         )
         return uint8_lut[raw_array.view(np.uint8)]
+    if raw_array.dtype.kind not in "iu":
+        raise TypeError(
+            f"dequantize_aef expects integer-quantized data, got {raw_array.dtype}; "
+            "float/bool input looks already dequantized."
+        )
+    if raw_array.size and (raw_array.min() < -128 or raw_array.max() > 127):
+        raise ValueError(
+            "quantized values must be within [-128, 127]; got range "
+            f"[{raw_array.min()}, {raw_array.max()}]"
+        )
     return lut[raw_array.astype(np.int16) + 128]
 
 

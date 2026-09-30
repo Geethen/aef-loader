@@ -3,6 +3,7 @@
 import warnings
 
 import numpy as np
+import pytest
 import xarray as xr
 
 from aef_loader.utils import dequantize_aef, quantize_aef
@@ -26,3 +27,28 @@ def test_quantize_roundtrip_keeps_nodata_dataarray_dask():
         back = quantize_aef(dequantize_aef(da)).compute()
     np.testing.assert_array_equal(back.values, raw)
     assert back.attrs["nodata"] == -128
+
+
+def test_dequantize_rejects_float_input():
+    with pytest.raises(TypeError, match="already dequantized"):
+        dequantize_aef(np.array([0.5, -0.25], dtype=np.float32))
+    with pytest.raises(TypeError):
+        dequantize_aef(xr.DataArray(np.array([0.5]), dims=("x",)))
+
+
+def test_dequantize_wide_int_range_checked():
+    with pytest.raises(ValueError, match="-128, 127"):
+        dequantize_aef(np.array([-200, 0], dtype=np.int16))
+    with pytest.raises(ValueError):
+        dequantize_aef(np.array([200], dtype=np.int16))
+    lazy = xr.DataArray(np.array([-200, 0], dtype=np.int16), dims=("x",)).chunk(1)
+    out = dequantize_aef(lazy)  # stays lazy
+    with pytest.raises(ValueError):
+        out.compute()
+
+
+def test_dequantize_wide_int_in_range_matches_int8():
+    raw = np.arange(-128, 128, dtype=np.int8)
+    np.testing.assert_array_equal(
+        dequantize_aef(raw.astype(np.int16)), dequantize_aef(raw)
+    )
