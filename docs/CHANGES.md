@@ -1,32 +1,13 @@
-# aef_loader_plus — local fork with nyvest improvements
+# Changes relative to upstream
 
-A local fork of [jakenotjay/aef-loader](https://github.com/jakenotjay/aef-loader)
-carrying six changes ported from this repo's own AEF inference pipeline
-(`DNN/fetch_aef_sourcecoop.py`, `DNN/prep_aef_tiles.py`, `DNN/build_vrt.py`).
-Built and tested against the pixi-managed `geo` env (Python 3.12), which already
-had every dependency except `virtual-tiff` (installed via `geo-pip`).
-
-Forked from upstream commit `feff13e` (see `UPSTREAM_COMMIT.txt`). The package is
-still importable as `aef_loader` (a `.pth` in the geo env's site-packages points
-here), so it drops in wherever the upstream package would be used, and every edit
-is exactly the diff we intend to PR.
-
-## How to use it in the geo env
-
-```python
-# geo env: /home/geethen.singh/.pixi/envs/geo/bin/python
-from aef_loader import AEFIndex, VirtualTiffReader, DataSource, aoi_geobox
-from aef_loader.utils import reproject_datatree
-```
-
-The `.pth` file that wires it in:
-`/home/geethen.singh/.pixi/envs/geo/lib/python3.12/site-packages/aef_loader_plus.pth`
-(a single line containing this directory). Delete it to fall back to any
-pip-installed `aef_loader`.
-
+aef-loader-plus is a fork of [jakenotjay/aef-loader](https://github.com/jakenotjay/aef-loader)
+(Apache-2.0), forked from upstream commit `feff13e` (see [UPSTREAM_COMMIT.txt](UPSTREAM_COMMIT.txt)).
+The full diff against that commit is in [upstream.diff](upstream.diff). All changes are
+additive and were written so they can be proposed upstream. The import name is unchanged
+(`aef_loader`), so it is a drop-in replacement.
 ## Changes and measured results
 
-All speed numbers were measured in the geo env against live source.coop tiles
+All speed numbers were measured against live source.coop tiles
 over a small Norwegian AOI (zone 31N/32N, Rogaland + Bergen/Voss), 2024.
 
 ### A. `chunks=None` no longer materialises whole tiles  ← biggest win, and a latent upstream bug

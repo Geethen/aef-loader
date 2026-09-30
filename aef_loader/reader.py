@@ -47,16 +47,14 @@ ChunkSpec = int | dict | Literal["auto", "native", "balanced", "all-bands"] | No
 
 def _parse_gcs_path(path: str) -> tuple[str, str]:
     """Parse gs://bucket/key into (bucket, key)."""
-    if path.startswith("gs://"):
-        path = path[5:]
+    path = path.removeprefix("gs://")
     parts = path.split("/", 1)
     return parts[0], parts[1] if len(parts) > 1 else ""
 
 
 def _parse_s3_path(path: str) -> tuple[str, str]:
     """Parse s3://bucket/key into (bucket, key)."""
-    if path.startswith("s3://"):
-        path = path[5:]
+    path = path.removeprefix("s3://")
     parts = path.split("/", 1)
     return parts[0], parts[1] if len(parts) > 1 else ""
 

@@ -43,7 +43,7 @@ import numpy as np
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
-EE_PROJECT = os.environ.get("EE_PROJECT", "ee-gsingh")
+EE_PROJECT = os.environ.get("EE_PROJECT", "")
 EE_COLLECTION = "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
 YEAR = 2024
 # Upper-left chip corners on the native 10 m lattice. Each lies inside a single
@@ -93,7 +93,7 @@ def run_geedim(size: int) -> dict:
     import geedim  # noqa: F401  (registers the .gd accessor)
 
     ee.Initialize(
-        project=EE_PROJECT, opt_url="https://earthengine-highvolume.googleapis.com"
+        project=EE_PROJECT or None, opt_url="https://earthengine-highvolume.googleapis.com"
     )
     t_init = perf_counter() - t0
 

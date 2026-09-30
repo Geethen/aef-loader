@@ -241,16 +241,16 @@ def int8_to_float32(
 
 
 @overload
-def set_aef_nodata(data: xr.DataArray, nodata: int | float = ...) -> xr.DataArray: ...
+def set_aef_nodata(data: xr.DataArray, nodata: float = ...) -> xr.DataArray: ...
 
 
 @overload
-def set_aef_nodata(data: xr.Dataset, nodata: int | float = ...) -> xr.Dataset: ...
+def set_aef_nodata(data: xr.Dataset, nodata: float = ...) -> xr.Dataset: ...
 
 
 def set_aef_nodata(
     data: xr.DataArray | xr.Dataset,
-    nodata: int | float = AEF_NODATA_VALUE,
+    nodata: float = AEF_NODATA_VALUE,
 ) -> xr.DataArray | xr.Dataset:
     """Return a copy with the nodata and _FillValue attributes set explicitly.
 
@@ -310,7 +310,7 @@ def reproject_datatree(
     tree: DataTree,
     target_geobox: GeoBox,
     resampling: str = "nearest",
-    dst_nodata: int | float | None = None,
+    dst_nodata: float | None = None,
     allow_lossy_resampling: bool = False,
 ) -> xr.Dataset:
     """

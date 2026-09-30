@@ -1,0 +1,10 @@
+aef-loader-plus
+Copyright 2026 Geethen Singh
+
+This product is a fork of aef-loader (https://github.com/jakenotjay/aef-loader),
+Copyright Jake Wilkins, licensed under the Apache License, Version 2.0.
+Forked from upstream commit feff13e367293a2ac41b6f32913400485a8e0db9.
+Modifications are listed in docs/CHANGES.md and docs/upstream.diff.
+
+The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and
+Google DeepMind and licensed under CC-BY 4.0.
