@@ -38,7 +38,7 @@ def _years_ds(years):
 def test_select_years_partial_warns_and_subsets():
     ds = _years_ds([2020, 2021, 2022])
     with pytest.warns(UserWarning, match=r"\[2025\]"):
-        out = _select_years(ds, [2021, 2025], "utm31")
+        out, _ = _select_years(ds, [2021, 2025], "utm31")
     assert out["time"].values.tolist() == [2021]
 
 
@@ -46,14 +46,17 @@ def test_select_years_all_present_is_silent():
     ds = _years_ds([2020, 2021])
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        out = _select_years(ds, [2020, 2021], "utm31")
+        out, _ = _select_years(ds, [2020, 2021], "utm31")
     assert out.sizes["time"] == 2
 
 
-def test_select_years_none_present_raises_with_available():
+def test_select_years_none_present_skips_zone_and_reports_available():
+    # A zone without the years is skipped, not fatal: coverage can differ by
+    # zone, and open_tessera raises only when no zone has any requested year.
     ds = _years_ds([2020, 2021])
-    with pytest.raises(ValueError, match=r"\[2030\].*\[2020, 2021\]"):
-        _select_years(ds, [2030], "utm31")
+    out, available = _select_years(ds, [2030], "utm31")
+    assert out is None
+    assert available == [2020, 2021]
 
 
 @pytest.mark.slow

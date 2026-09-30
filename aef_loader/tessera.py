@@ -75,22 +75,26 @@ def _normalise_years(years: int | Iterable[int] | tuple[int, int]) -> list[int]:
     return sorted({int(y) for y in years})
 
 
-def _select_years(ds: xr.Dataset, sel: list[int], group_name: str) -> xr.Dataset:
-    """Select ``sel`` years from ``ds``; raise if none exist, warn if some are missing."""
-    available = set(ds["time"].values.tolist())
+def _select_years(
+    ds: xr.Dataset, sel: list[int], group_name: str
+) -> tuple[xr.Dataset | None, list[int]]:
+    """Select ``sel`` years from ``ds``.
+
+    Returns ``(None, available_years)`` when none of the years exist in this
+    zone, so the caller can skip it (coverage may differ between zones) and
+    raise only if no zone has data. Warns when some requested years are missing.
+    """
+    available = sorted(set(ds["time"].values.tolist()))
     present = [y for y in sel if y in available]
     missing = [y for y in sel if y not in available]
     if not present:
-        raise ValueError(
-            f"None of the requested years {sel} are present in {group_name}; "
-            f"the store has years {sorted(available)}"
-        )
+        return None, available
     if missing:
         warnings.warn(
             f"Years {missing} are not present in {group_name} and were skipped",
             stacklevel=3,
         )
-    return ds.sel(time=present)
+    return ds.sel(time=present), available
 
 
 def open_tessera(
@@ -140,6 +144,7 @@ def open_tessera(
     from pyproj import Transformer
 
     zone_datasets: dict[str, xr.Dataset] = {}
+    years_by_zone: dict[str, list[int]] = {}  # zones skipped for lack of years
     for zone in zone_list:
         group_name = f"utm{zone:02d}"
         if group_name not in root:
@@ -176,7 +181,10 @@ def open_tessera(
             y=f + e * (np.arange(row0, row1) + 0.5),
         )
         if sel is not None:
-            ds = _select_years(ds, sel, group_name)
+            ds, available = _select_years(ds, sel, group_name)
+            if ds is None:
+                years_by_zone[group_name] = available
+                continue
 
         keep = ["embeddings", "scales"] + (list(_QUALITY_VARS) if include_quality else [])
         ds = ds[[v for v in keep if v in ds.data_vars]]
@@ -192,7 +200,15 @@ def open_tessera(
         zone_datasets[f"{zone}N"] = ds
 
     if not zone_datasets:
-        raise ValueError("No TESSERA data found for the requested bbox and zones")
+        if years_by_zone:
+            raise ValueError(
+                f"None of the requested years {sel} exist for bbox {bbox} "
+                f"(bbox_crs={bbox_crs!r}); available years by zone: {years_by_zone}"
+            )
+        raise ValueError(
+            f"No TESSERA data found for bbox {bbox} (bbox_crs={bbox_crs!r}) "
+            f"in zones {zone_list}"
+        )
 
     tree = DataTree.from_dict({f"/{k}": v for k, v in zone_datasets.items()})
     tree.attrs["zones"] = list(zone_datasets)

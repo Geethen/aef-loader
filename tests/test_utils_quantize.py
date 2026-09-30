@@ -52,3 +52,12 @@ def test_dequantize_wide_int_in_range_matches_int8():
     np.testing.assert_array_equal(
         dequantize_aef(raw.astype(np.int16)), dequantize_aef(raw)
     )
+
+
+def test_dequantize_rejects_float_dask_input_at_call_time():
+    import dask.array as da
+    import xarray as xr
+
+    lazy = xr.DataArray(da.from_array(np.array([0.25, 0.5], dtype=np.float32), chunks=1), dims="x")
+    with pytest.raises(TypeError, match="already dequantized"):
+        dequantize_aef(lazy)  # must not wait until .compute()

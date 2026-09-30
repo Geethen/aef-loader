@@ -124,6 +124,13 @@ def dequantize_aef(
 
     if isinstance(data, xr.DataArray):
         array = data.data
+        # Check the dtype up front: for dask input the per-block check in
+        # _dequantize_lut would otherwise only fire at compute time.
+        if np.dtype(array.dtype).kind not in "iu":
+            raise TypeError(
+                f"dequantize_aef expects integer-quantized data, got {array.dtype}; "
+                "float/bool input looks already dequantized."
+            )
         if hasattr(array, "map_blocks"):
             # One task per existing block, with no intermediate mask, cast,
             # division, square and sign arrays in the Dask graph.
