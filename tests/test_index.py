@@ -203,3 +203,90 @@ def test_exact_fetches_geom_column_once_and_caches(monkeypatch, tmp_path):
     fresh = AEFIndex(source=DataSource.SOURCE_COOP, cache_dir=tmp_path)
     fresh.load()
     assert [t.id for t in fresh.search(bbox=aoi, exact=True)] == truth
+
+
+@pytest.mark.parametrize(
+    "text,code", [("EPSG:32633", 32633), ("epsg:32633", 32633), ("32633", 32633)]
+)
+def test_parse_epsg_accepts_common_forms(text, code):
+    assert index_module._parse_epsg(text) == code
+
+
+@pytest.mark.parametrize("text", ["WGS84", "EPSG:", "utm33", ""])
+def test_parse_epsg_rejects_unknown(text):
+    with pytest.raises(ValueError, match="CRS"):
+        index_module._parse_epsg(text)
+
+
+def test_search_raises_on_unparseable_crs():
+    df, _ = _records(3)
+    df["crs"] = "WGS84"
+    index = AEFIndex(source=DataSource.SOURCE_COOP)
+    index._df = df
+    with pytest.raises(ValueError, match="CRS"):
+        index.search()
+
+
+def test_default_source_is_source_coop():
+    assert AEFIndex().source is DataSource.SOURCE_COOP
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("source_coop", DataSource.SOURCE_COOP),
+        ("SOURCE_COOP", DataSource.SOURCE_COOP),
+        ("gcs", DataSource.GCS),
+        ("GCS", DataSource.GCS),
+        (DataSource.GCS, DataSource.GCS),
+    ],
+)
+def test_source_strings_are_normalised(value, expected):
+    assert AEFIndex(source=value).source is expected
+
+
+def test_unknown_source_string_raises():
+    with pytest.raises(ValueError):
+        AEFIndex(source="s3")
+
+
+def test_cache_dir_accepts_str_and_path(tmp_path):
+    assert AEFIndex(cache_dir=str(tmp_path)).cache_dir == tmp_path
+    assert AEFIndex(cache_dir=tmp_path).cache_dir == tmp_path
+
+
+def test_exact_without_shapely_raises_helpful_importerror(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "shapely" or name.startswith("shapely."):
+            raise ImportError("no shapely")
+        return real_import(name, *args, **kwargs)
+
+    df, _ = _records(5)
+    index = AEFIndex(source=DataSource.SOURCE_COOP)
+    index._df = df
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    with pytest.raises(ImportError, match=r"aef-loader-plus\[exact\]"):
+        index.search(bbox=(0, 0, 3, 3), exact=True)
+
+
+def test_version_comes_from_metadata_with_fallback(monkeypatch):
+    import importlib
+    import importlib.metadata as md
+
+    import aef_loader
+
+    assert aef_loader.__version__ == md.version("aef-loader-plus")
+
+    def missing(name):
+        raise md.PackageNotFoundError(name)
+
+    monkeypatch.setattr(md, "version", missing)
+    try:
+        assert importlib.reload(aef_loader).__version__ == "0+unknown"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(aef_loader)

@@ -9,6 +9,15 @@ class DataSource(Enum):
     GCS = "gcs"
     SOURCE_COOP = "source_coop"
 
+    @classmethod
+    def _missing_(cls, value):
+        """Accept ``"gcs"``/``"source_coop"`` case-insensitively; else ValueError."""
+        if isinstance(value, str):
+            for member in cls:
+                if member.value == value.strip().lower():
+                    return member
+        return None
+
 
 # GCS (Google Cloud Storage) configuration - original source
 GCS_BUCKET = "alphaearth_foundations"

@@ -37,7 +37,8 @@ Data verified bit-identical to the `chunks="auto"` path.
 `utils.py`. The plain-ndarray path now gathers through a precomputed 256-entry
 int8→float32 LUT instead of recomputing `(v/127.5)²·sign(v)` per pixel, and
 folds the `-128 → NaN` nodata step into the same gather (no separate mask/
-temporaries). The dask-backed `DataArray` path is unchanged (stays lazy).
+temporaries). The dask-backed `DataArray` path stays lazy: it applies the same
+LUT gather per block with `map_blocks`.
 
 - **1.71× faster** on a 2048²×64 window (2702 ms → 1582 ms).
 - Bit-exact vs the reference formula for all 256 int8 values (int8 and int16 in).
@@ -121,3 +122,29 @@ maintainer as a bug report on its own — the recommended `chunks=None` path is
 
 ### H. TESSERA support (`aef_loader/tessera.py`, new)
 Lazy `open_tessera(bbox, bbox_crs, years, zones=, dequantize=, include_quality=)` over the Source Cooperative Zarr v3 store (`v1.1-dclimate`). Crops by pixel index with no resampling, returns a DataTree by UTM zone compatible with `reproject_datatree`. Verified live on a Norwegian (31N) and a South African (35N) site.
+
+## 2026-09-30 review fixes
+Landed after the repo reviews ([REVIEW-2026-09-30.md](REVIEW-2026-09-30.md),
+[REVIEW-2026-09-30-astra.md](REVIEW-2026-09-30-astra.md); decisions in
+[DESIGN-2026-09-30.md](DESIGN-2026-09-30.md)).
+
+- **Merge:** `reproject_datatree` takes each pixel from exactly one zone for all
+  variables (one validity mask per zone), outer-aligns differing years/bands, and
+  raises for integer data without a nodata attr instead of silently keeping zone 1.
+- **Quantization:** `quantize_aef` keeps NaN as the nodata code; `dequantize_aef`
+  rejects float/out-of-range input instead of mis-decoding it.
+- **Index:** `AEFIndex.search()` (sync; `query()` wraps it) reads only the search
+  columns with ranged requests (~9 MB instead of ~78 MB); `exact=True` fetches the
+  footprint geometry once and refines with a true intersection (needs the `exact`
+  extra). Default cache dir is per-user, default source is Source Cooperative,
+  source strings are validated, CRS strings are parsed strictly, and index writes
+  are atomic.
+- **Reader:** AOI crops no longer include edge-touching cells or produce empty
+  arrays; tiles are grouped by (zone, CRS); the GeoTIFF pixel-scale/tiepoint affine
+  is north-up and honours the tiepoint; `model_transformation` is preferred.
+- **Cache:** manifest cache writes use a unique temp file per writer.
+- **TESSERA:** `open_tessera` no longer consumes one-shot `years` iterables, and
+  skips zones lacking the requested years instead of returning zero-length time.
+- **Packaging/CI:** `py.typed`, metadata-derived `__version__`, optional `exact`
+  extra, uv lockfile, 3.12/3.13 + Windows CI matrix with ruff, benchmark integrity
+  checks. `aoi_geobox(snap=False)` is now genuinely AOI-anchored.

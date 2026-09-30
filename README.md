@@ -16,6 +16,7 @@ project; see [NOTICE](NOTICE) and [docs/UPSTREAM_README.md](docs/UPSTREAM_README
 - Faster LUT-based `dequantize_aef`
 - `AEFIndex.search(bbox_crs=...)` with densified bbox reprojection
 - `aoi_geobox` for lattice-snapped, mosaic-safe grids
+- Sync `AEFIndex.search()` over a slim ranged index download (~9 MB instead of ~78 MB), with optional `exact=True` footprint crop
 - `reproject_datatree` refuses lossy resampling on int8 data unless `allow_lossy_resampling=True`
 - `combine_by_coords` keeps int8 and its `-128` nodata sentinel
 
@@ -24,7 +25,8 @@ Details and measurements: [docs/CHANGES.md](docs/CHANGES.md),
 
 ## Installation
 
-Requires Python 3.12+.
+Requires Python 3.12+. For `search(..., exact=True)` (true footprint intersection) install the
+`exact` extra (geopandas and shapely): `pip install "aef-loader-plus[exact] @ git+https://github.com/Geethen/aef_loader_plus.git"`.
 
 ```bash
 pip install git+https://github.com/Geethen/aef_loader_plus.git
@@ -58,7 +60,8 @@ from aef_loader.utils import reproject_datatree
 from odc.geo.geobox import GeoBox
 
 async def main():
-    # Source Cooperative is free and needs no auth
+    # Source Cooperative (the default) is free and needs no auth;
+    # use DataSource.GCS with gcp_project=... for the requester-pays bucket
     index = AEFIndex(source=DataSource.SOURCE_COOP)
     await index.download()
     index.load()

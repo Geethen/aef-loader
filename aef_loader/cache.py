@@ -24,6 +24,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -151,19 +153,29 @@ def save_manifest(
 ) -> None:
     """Serialise ``store`` to the cache for (url, ifd). Best-effort; never raises.
 
-    Writes atomically (temp file + rename) so a crash mid-write can't leave a
-    half-written JSON that a later run would treat as a corrupt hit.
+    Writes atomically (unique temp file in the same directory + rename) so a
+    crash mid-write can't leave a half-written JSON that a later run would treat
+    as a corrupt hit, and concurrent writers of the same key can't clobber each
+    other's temp file.
     """
     path = cache_path_for(cache_dir, url, ifd)
+    tmp_name = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = _manifest_to_jsonable(store)
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(payload, default=_json_default))
-        tmp.replace(path)
+        with tempfile.NamedTemporaryFile(
+            "w", dir=path.parent, suffix=".tmp", delete=False
+        ) as tmp:
+            tmp_name = tmp.name
+            tmp.write(json.dumps(payload, default=_json_default))
+        os.replace(tmp_name, path)
+        tmp_name = None
         logger.debug("manifest cached: %s -> %s", url, path.name)
     except Exception as exc:  # noqa: BLE001 — caching is an optimisation, not a contract
         logger.warning("could not cache manifest for %s (%s)", url, exc)
+    finally:
+        if tmp_name is not None:
+            Path(tmp_name).unlink(missing_ok=True)
 
 
 def _json_default(obj):

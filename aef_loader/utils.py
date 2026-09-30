@@ -451,12 +451,16 @@ def reproject_datatree(
     executes when .compute() is called. Chunks are loaded and reprojected
     on-demand.
 
-    For combining zones, each pixel is taken from exactly one zone for all of its
-    variables (see ``_pixel_validity``):
-    - Uses values from earlier zones where the pixel is valid
-    - Fills invalid pixels with values from subsequent zones
-    - In true overlapping regions (both have valid data), earlier zones take precedence
+    Zones are merged with one source zone per pixel: a validity mask per zone
+    (``_pixel_validity``: not the nodata sentinel / not NaN / finite scale) decides
+    which zone supplies each ``(time, y, x)`` pixel, and that zone supplies *all*
+    of the pixel's variables (so e.g. codes and scales never come from different
+    zones):
+    - A pixel takes its values from the first zone (in tree order) that is valid there
+    - Pixels invalid in every earlier zone are filled from later zones
+    - In true overlapping regions (both valid), earlier zones take precedence
     - Zones with different years (or bands) are outer-aligned first
+    - The merge is elementwise (``xr.where``), so chunk structure is preserved
 
     Since overlapping regions contain reprojections of the same underlying data,
     values should be identical regardless of which zone they come from.
@@ -533,7 +537,11 @@ def reproject_datatree(
         reprojected_datasets.append(reprojected)
 
     if len(reprojected_datasets) == 0:
-        raise ValueError("No datasets to reproject")
+        raise ValueError(
+            "No datasets to reproject: none of the "
+            f"{len(tree.children)} zone(s) {list(tree.children)} in the tree has data "
+            f"variables (target CRS {target_geobox.crs})"
+        )
 
     if len(reprojected_datasets) == 1:
         return reprojected_datasets[0]
@@ -561,13 +569,16 @@ def aoi_geobox(
 ) -> GeoBox:
     """Build a target ``GeoBox`` for an AOI, snapped to a global pixel lattice.
 
-    ``GeoBox.from_bbox`` anchors the grid at the AOI's own corner, so two AOIs
-    reprojected independently (e.g. adjacent tiles, or the same area at different
-    times) land on *different* pixel grids and cannot be mosaicked without
-    resampling. Snapping the origin to integer multiples of ``resolution``
-    (anchored at 0, 0) makes every AOI at a given resolution/CRS share one grid,
-    so outputs align exactly and can be merged losslessly. This is the odc-geo
-    analogue of the lattice snap ``prep_aef_tiles.py`` applies to warped tiles.
+    An AOI-anchored grid (origin at the bbox corner) puts two AOIs reprojected
+    independently (e.g. adjacent tiles, or the same area at different times) on
+    *different* pixel grids, so they cannot be mosaicked without resampling.
+    Snapping the origin to integer multiples of ``resolution`` (anchored at
+    0, 0) makes every AOI at a given resolution/CRS share one grid, so outputs
+    align exactly and can be merged losslessly. This is the odc-geo analogue of
+    the lattice snap ``prep_aef_tiles.py`` applies to warped tiles.
+
+    Note that ``GeoBox.from_bbox`` itself snaps to the resolution lattice by
+    default (odc-geo >= 0.5), so the AOI-anchored grid needs ``tight=True``.
 
     Args:
         bbox: AOI bounds ``(minx, miny, maxx, maxy)``.
@@ -577,7 +588,8 @@ def aoi_geobox(
             reprojected (densified) to ``crs`` first. Defaults to ``crs``.
         snap: When True (default), snap the origin to the ``resolution`` lattice
             and grow the extent outward to fully cover ``bbox``. When False,
-            behaves like ``GeoBox.from_bbox`` (AOI-anchored grid).
+            the grid is AOI-anchored: its origin sits at the bbox corner
+            (``GeoBox.from_bbox(..., tight=True)``).
 
     Returns:
         A north-up ``GeoBox`` in ``crs`` at ``resolution`` covering ``bbox``.
@@ -595,7 +607,7 @@ def aoi_geobox(
 
     if not snap:
         return GeoBox.from_bbox(
-            (minx, miny, maxx, maxy), crs=crs, resolution=resolution
+            (minx, miny, maxx, maxy), crs=crs, resolution=resolution, tight=True
         )
 
     # Snap outward to the global lattice: floor the min edges, ceil the max edges.

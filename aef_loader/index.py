@@ -62,6 +62,18 @@ _OPTIONAL_COLUMNS = (
 )
 
 
+def _import_shapely():
+    """Import shapely for ``exact=True``, with an actionable error if missing."""
+    try:
+        import shapely
+    except ImportError as exc:
+        raise ImportError(
+            "exact=True requires shapely; install it with "
+            'pip install "aef-loader-plus[exact]"'
+        ) from exc
+    return shapely
+
+
 def _default_cache_dir() -> Path:
     """Per-user cache directory (platformdirs if installed, else ``~/.cache``)."""
     try:
@@ -70,6 +82,17 @@ def _default_cache_dir() -> Path:
         return Path(user_cache_dir("aef-loader"))
     except ImportError:
         return Path.home() / ".cache" / "aef-loader"
+
+
+def _parse_epsg(crs: object) -> int:
+    """EPSG code from ``"EPSG:32633"``, ``"epsg:32633"`` or bare ``"32633"``."""
+    text = str(crs).strip()
+    code = text.split(":", 1)[1] if text.upper().startswith("EPSG:") else text
+    if not code.isdigit():
+        raise ValueError(
+            f"unrecognised CRS {crs!r} in index; expected 'EPSG:<code>' or '<code>'"
+        )
+    return int(code)
 
 
 class _ObstoreRangeFile(io.RawIOBase):
@@ -156,7 +179,7 @@ class AEFIndex:
     The index contains metadata about all AEF tiles including their
     bounding boxes and paths. It is loaded as a plain pandas DataFrame and
     filtered by WGS84 bbox overlap; ``exact=True`` refines with the true
-    footprint geometry (requires geopandas/shapely).
+    footprint geometry (requires shapely: ``pip install "aef-loader-plus[exact]"``).
 
     Supports both GCS (Google Cloud Storage) and Source Cooperative (AWS S3) backends.
 
@@ -180,21 +203,23 @@ class AEFIndex:
 
     def __init__(
         self,
-        source: DataSource = DataSource.GCS,
+        source: DataSource | str = DataSource.SOURCE_COOP,
         gcp_project: str | None = None,
-        cache_dir: Path | None = None,
+        cache_dir: Path | str | None = None,
     ):
         """
         Initialize AEF index manager.
 
         Args:
-            source: Data source (GCS or SOURCE_COOP)
+            source: Data source: ``DataSource.SOURCE_COOP`` (default, public) or
+                ``DataSource.GCS`` (requester pays); the strings
+                ``"source_coop"``/``"gcs"`` are accepted case-insensitively
             gcp_project: GCP project ID for requester-pays bucket access (GCS only)
             cache_dir: Directory for caching the index (default: the per-user
                 cache directory, ``platformdirs.user_cache_dir("aef-loader")``
                 when available, else ``~/.cache/aef-loader``)
         """
-        self.source = source
+        self.source = DataSource(source)
         self.gcp_project = gcp_project
         self.cache_dir = Path(cache_dir) if cache_dir else _default_cache_dir()
         self._df: pd.DataFrame | None = None
@@ -341,7 +366,7 @@ class AEFIndex:
         """Footprint geometries in index row order, fetched once and cached on disk."""
         if self._geoms is not None:
             return self._geoms
-        import shapely
+        shapely = _import_shapely()
 
         df = self._df
         if df is not None and "geometry" in df.columns:  # e.g. an assigned GeoDataFrame
@@ -471,7 +496,7 @@ class AEFIndex:
         positions = np.flatnonzero(keep)  # ascending == file row order
 
         if exact and bbox and len(positions):
-            import shapely
+            shapely = _import_shapely()
 
             geoms = self._load_geoms()
             hit = shapely.intersects(
@@ -502,7 +527,6 @@ class AEFIndex:
 
         tiles: list[AEFTileInfo] = []
         for row in gdf.itertuples(index=True, name=None):
-            crs = str(value(row, "crs"))
             tiles.append(
                 AEFTileInfo(
                     id=str(value(row, "fid") if has_fid else row[0]),
@@ -514,7 +538,7 @@ class AEFIndex:
                         value(row, "wgs84_east"),
                         value(row, "wgs84_north"),
                     ),
-                    crs_epsg=int(crs.split(":", 1)[1]) if ":" in crs else 4326,
+                    crs_epsg=_parse_epsg(value(row, "crs")),
                     utm_zone=value(row, "utm_zone") if has_utm_zone else None,
                     utm_bounds=(
                         (
