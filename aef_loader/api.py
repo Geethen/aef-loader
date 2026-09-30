@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import threading
 from collections.abc import Coroutine
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +30,14 @@ _OPEN_KWARGS = frozenset({"ifd", "buffer_pixels", "max_concurrency"})
 
 _INDEXES: dict[tuple, AEFIndex] = {}
 _INDEXES_LOCK = threading.Lock()
+# In-flight first loads, keyed by ``id(index)``. Guarded by a thread lock (not an
+# asyncio.Lock) because open_aef/run_sync run coroutines on worker-thread loops.
+_LOADS: dict[int, Future] = {}
+_LOADS_LOCK = threading.Lock()
+
+
+class _LoadCancelled(Exception):
+    """The caller running an index load was cancelled; waiters retry the load."""
 
 
 def get_shared_index(
@@ -45,10 +53,41 @@ def get_shared_index(
 
 
 async def ensure_index_loaded(index: AEFIndex) -> AEFIndex:
-    """Download (if not cached on disk) and load ``index`` unless it is already loaded."""
-    if index._df is None:
-        await index.download()
-        await asyncio.to_thread(index.load)
+    """Download (if not cached on disk) and load ``index`` unless it is already loaded.
+
+    The first load is single-flight per index object across event loops and threads:
+    one caller loads, concurrent callers wait for it. If it fails, every waiter gets
+    the error and the next call retries.
+    """
+    while index._df is None:
+        with _LOADS_LOCK:
+            if index._df is not None:
+                break
+            future = _LOADS.get(id(index))
+            owner = future is None
+            if owner:
+                future = _LOADS[id(index)] = Future()
+        if not owner:
+            try:
+                # shield: cancelling one waiter must not cancel the shared load
+                await asyncio.shield(asyncio.wrap_future(future))
+            except _LoadCancelled:
+                continue  # the loading caller was cancelled; loop and take over
+            return index
+        try:
+            await index.download()
+            await asyncio.to_thread(index.load)
+        except BaseException as exc:
+            with _LOADS_LOCK:
+                del _LOADS[id(index)]
+            future.set_exception(
+                _LoadCancelled() if isinstance(exc, asyncio.CancelledError) else exc
+            )
+            raise
+        with _LOADS_LOCK:
+            del _LOADS[id(index)]
+        future.set_result(None)
+        return index
     return index
 
 

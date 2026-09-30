@@ -349,3 +349,58 @@ def test_shared_index_is_reused(tmp_path):
     assert api.get_shared_index("source_coop", None, tmp_path) is one
     assert api.get_shared_index("source_coop", None, tmp_path / "other") is not one
     assert api.get_shared_index("gcs", "proj", tmp_path) is not one
+
+
+# ---------------------------------------------------------------------------
+# empty ``years``
+# ---------------------------------------------------------------------------
+
+
+def assert_same_schema(empty, full):
+    assert len(empty) == 0
+    assert list(empty.columns) == list(full.columns)
+    assert empty.dtypes.to_dict() == full.dtypes.to_dict()
+
+
+@pytest.mark.parametrize("dequantize", [True, False])
+def test_points_empty_years_matches_nonempty_schema(two_tiles, dequantize):
+    tiles, datasets = two_tiles
+    pts = [(500025.0, 6499985.0)]
+    full = run_points(pts, tiles, datasets, dequantize=dequantize)
+    empty = run_points(pts, tiles, datasets, years=(), dequantize=dequantize)
+    assert_same_schema(empty, full)
+
+
+def test_zonal_empty_years_matches_nonempty_schema(two_tiles):
+    tiles, datasets = two_tiles
+    poly = box(500010, 6499970, 500030, 6499990)
+    args = ("EPSG:32631", tiles, datasets)
+    full = extract._extract_zonal_from_datasets([poly], ["z"], [2024], *args)
+    empty = extract._extract_zonal_from_datasets([poly], ["z"], [], *args)
+    assert_same_schema(empty, full)
+
+
+def unsearchable_index():
+    index = AEFIndex(cache_dir="unused")
+    index._df = pd.DataFrame()  # a search would fail: empty years must not reach it
+    return index
+
+
+def test_public_extract_empty_years_sync():
+    pts = extract.extract_points([(5.6, 58.7)], [], index=unsearchable_index())
+    assert len(pts) == 0
+    assert list(pts.columns[:6]) == ["point_id", "year", "x", "y", "tile_id", "utm_zone"]
+    assert list(pts.columns[6:]) == AEF.band_names(64)
+    assert pts.year.dtype == np.int64
+    zon = extract.extract_zonal([box(5.0, 58.0, 6.0, 59.0)], [], index=unsearchable_index())
+    assert len(zon) == 0
+    assert list(zon.columns[:3]) == ["polygon_id", "year", "n_pixels"]
+    assert zon.n_pixels.dtype == np.int64
+
+
+async def test_public_extract_empty_years_async():
+    pts = await extract.aextract_points([(5.6, 58.7)], [], index=unsearchable_index())
+    zon = await extract.aextract_zonal(
+        [box(5.0, 58.0, 6.0, 59.0)], [], index=unsearchable_index()
+    )
+    assert len(pts) == 0 and len(zon) == 0
