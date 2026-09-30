@@ -65,6 +65,15 @@ def _to_wgs84(bbox, bbox_crs: str) -> tuple[float, float, float, float]:
     return t.transform_bounds(*bbox, densify_pts=21)
 
 
+def _normalise_years(years: int | Iterable[int] | tuple[int, int]) -> list[int]:
+    """Sorted list of years: int -> [int]; 2-tuple -> inclusive range; else list."""
+    if isinstance(years, int):
+        return [int(years)]
+    if isinstance(years, tuple) and len(years) == 2:
+        return list(range(int(years[0]), int(years[1]) + 1))
+    return sorted({int(y) for y in years})
+
+
 def open_tessera(
     bbox: tuple[float, float, float, float],
     bbox_crs: str = "EPSG:4326",
@@ -106,6 +115,8 @@ def open_tessera(
     wgs = _to_wgs84(bbox, bbox_crs)
     zone_list = sorted(zones) if zones is not None else _candidate_zones(wgs)
     chunks = chunks or {"time": 1, "band": -1, "y": 1024, "x": 1024}
+    # Normalise once: ``years`` may be a one-shot iterator that every zone reads.
+    sel = _normalise_years(years) if years is not None else None
 
     from pyproj import Transformer
 
@@ -145,13 +156,7 @@ def open_tessera(
             x=c + a * (np.arange(col0, col1) + 0.5),
             y=f + e * (np.arange(row0, row1) + 0.5),
         )
-        if years is not None:
-            if isinstance(years, int):
-                sel = [years]
-            elif isinstance(years, tuple) and len(years) == 2:
-                sel = list(range(years[0], years[1] + 1))
-            else:
-                sel = list(years)
+        if sel is not None:
             ds = ds.sel(time=[t for t in sel if t in set(ds["time"].values.tolist())])
 
         keep = ["embeddings", "scales"] + (list(_QUALITY_VARS) if include_quality else [])
