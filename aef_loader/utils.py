@@ -130,16 +130,27 @@ def quantize_aef(
         data: Float32 embedding data in range [-1, 1]
         divisor: Quantization divisor (default: 127.5)
 
+    Non-finite inputs (NaN and +/-inf) are treated as nodata and written as
+    ``-128`` (AEF_NODATA_VALUE), so a dequantize/quantize round trip preserves
+    nodata instead of turning it into a valid zero code.
+
     Returns:
-        Quantized int8 data in range [-127, 127]
+        Quantized int8 data in range [-127, 127], with -128 for nodata
     """
+    finite = np.isfinite(data)
     sign = np.sign(data)
     magnitude = np.sqrt(np.abs(data))
     quantized = np.round(sign * magnitude * divisor)
 
     # Clamp to valid range [-127, 127] BEFORE casting to int8
     # This prevents overflow (128 -> -128 in int8)
-    quantized = np.clip(quantized, -127, 127).astype(np.int8)
+    quantized = np.clip(quantized, -127, 127)
+    # Replace non-finite values before the cast: NaN -> int8 is undefined.
+    if isinstance(data, xr.DataArray):
+        quantized = xr.where(finite, quantized, AEF_NODATA_VALUE)
+    else:
+        quantized = np.where(finite, quantized, AEF_NODATA_VALUE)
+    quantized = quantized.astype(np.int8)
 
     if isinstance(data, xr.DataArray):
         result = xr.DataArray(
