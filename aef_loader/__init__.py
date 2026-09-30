@@ -13,6 +13,7 @@ For combining data across zones, use reproject_datatree() from the utils module.
 
 from importlib.metadata import PackageNotFoundError, version
 
+from aef_loader.chips import Chip, read_chip, read_chips
 from aef_loader.constants import DataSource
 from aef_loader.index import AEFIndex
 from aef_loader.reader import VirtualTiffReader
@@ -35,6 +36,7 @@ __all__ = [
     "VirtualTiffReader",
     # Types
     "AEFTileInfo",
+    "Chip",
     "DataSource",
     # Utility functions
     "aoi_geobox",
@@ -42,6 +44,8 @@ __all__ = [
     "int8_to_float32",
     "mask_nodata",
     "open_tessera",
+    "read_chip",
+    "read_chips",
     "quantize_aef",
     "reproject_datatree",
     "set_aef_nodata",
