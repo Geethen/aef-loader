@@ -417,6 +417,15 @@ def _merge_zone_datasets(datasets: list[xr.Dataset]) -> xr.Dataset:
     valid_combined = valids[0]
     for ds, valid_next in zip(datasets[1:], valids[1:]):
         take = ~valid_combined & valid_next
+        for var in combined.data_vars:
+            if var not in ds.data_vars:
+                # Only an earlier zone has the variable: pixels this zone takes get nodata.
+                fill = _align_fill(combined[var])
+                attrs = combined[var].attrs
+                dims = combined[var].dims
+                kept = combined[var].where(~take, fill).astype(combined[var].dtype)
+                combined[var] = kept.transpose(*dims)
+                combined[var].attrs = attrs
         for var in ds.data_vars:
             if var not in combined.data_vars:
                 # Only this zone has the variable: earlier-zone pixels get nodata.
