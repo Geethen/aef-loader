@@ -16,6 +16,7 @@ project; see [NOTICE](NOTICE) and [docs/UPSTREAM_README.md](docs/UPSTREAM_README
 - Faster LUT-based `dequantize_aef`
 - `AEFIndex.search(bbox_crs=...)` with densified bbox reprojection
 - `aoi_geobox` for lattice-snapped, mosaic-safe grids
+- Sync `AEFIndex.search()` over a slim ranged index download (~9 MB instead of ~78 MB), with optional `exact=True` footprint crop
 - `reproject_datatree` refuses lossy resampling on int8 data unless `allow_lossy_resampling=True`
 - `combine_by_coords` keeps int8 and its `-128` nodata sentinel
 

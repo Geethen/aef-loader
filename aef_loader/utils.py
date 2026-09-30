@@ -451,12 +451,16 @@ def reproject_datatree(
     executes when .compute() is called. Chunks are loaded and reprojected
     on-demand.
 
-    For combining zones, each pixel is taken from exactly one zone for all of its
-    variables (see ``_pixel_validity``):
-    - Uses values from earlier zones where the pixel is valid
-    - Fills invalid pixels with values from subsequent zones
-    - In true overlapping regions (both have valid data), earlier zones take precedence
+    Zones are merged with one source zone per pixel: a validity mask per zone
+    (``_pixel_validity``: not the nodata sentinel / not NaN / finite scale) decides
+    which zone supplies each ``(time, y, x)`` pixel, and that zone supplies *all*
+    of the pixel's variables (so e.g. codes and scales never come from different
+    zones):
+    - A pixel takes its values from the first zone (in tree order) that is valid there
+    - Pixels invalid in every earlier zone are filled from later zones
+    - In true overlapping regions (both valid), earlier zones take precedence
     - Zones with different years (or bands) are outer-aligned first
+    - The merge is elementwise (``xr.where``), so chunk structure is preserved
 
     Since overlapping regions contain reprojections of the same underlying data,
     values should be identical regardless of which zone they come from.
