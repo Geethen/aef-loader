@@ -8,7 +8,7 @@ import aef_loader.cache as cache
 
 
 def _patch_payload(monkeypatch, payload):
-    monkeypatch.setattr(cache, "_manifest_to_jsonable", lambda store: payload)
+    monkeypatch.setattr(cache, "_manifest_to_jsonable", lambda store, object_meta=None: payload)
 
 
 def test_concurrent_saves_of_same_key_use_unique_temp_files(monkeypatch, tmp_path):

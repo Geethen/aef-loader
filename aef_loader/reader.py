@@ -353,6 +353,7 @@ class VirtualTiffReader:
         manifest_cache_dir: str | Path | None = None,
         memory_manifest_cache_size: int = 128,
         collection: Collection = AEF,
+        manifest_validation: Literal["none", "head"] = "none",
     ):
         """
         Initialize the virtual TIFF reader.
@@ -371,9 +372,12 @@ class VirtualTiffReader:
             collection: Description of the COG collection being read (band
                 names, nodata sentinel, encoding). Defaults to AlphaEarth
                 Foundations.
+            manifest_validation: Whether to validate cached manifests against the
+                remote object's identity ("head") or trust the cache ("none").
         """
         self.collection = collection
         self.gcp_project = gcp_project
+        self.manifest_validation = manifest_validation
         self.manifest_cache_dir = (
             Path(manifest_cache_dir) if manifest_cache_dir is not None else None
         )
@@ -655,19 +659,43 @@ class VirtualTiffReader:
                 self._manifest_cache.move_to_end(manifest_key)
                 self._stats["memory_manifest_hits"] += 1
             elif cache_dir is not None:
-                manifest_store = await asyncio.to_thread(
+                manifest_store, cached_meta = await asyncio.to_thread(
                     load_cached_manifest, cache_dir, file_url, ifd, registry
                 )
                 if manifest_store is not None:
-                    self._stats["disk_manifest_hits"] += 1
+                    if self.manifest_validation == "head":
+                        store_obj = self._get_store(protocol, bucket)
+                        try:
+                            head_meta = await store_obj.head_async(key)
+                            if (
+                                cached_meta is None or
+                                cached_meta.get("e_tag") != head_meta.get("e_tag") or
+                                cached_meta.get("size") != head_meta.get("size")
+                            ):
+                                logger.info("manifest cache %s stale: ETag or size mismatch", file_url)
+                                self._stats["manifest_stale"] = self._stats.get("manifest_stale", 0) + 1
+                                manifest_store = None
+                        except Exception as exc:
+                            logger.warning("could not validate manifest for %s: %s", file_url, exc)
+                            manifest_store = None
+                    if manifest_store is not None:
+                        self._stats["disk_manifest_hits"] += 1
             if manifest_store is None:
                 manifest_store = await asyncio.to_thread(
                     parser, url=file_url, registry=registry
                 )
                 self._stats["manifest_parses"] += 1
                 if cache_dir is not None:
+                    store_obj = self._get_store(protocol, bucket)
+                    head_meta = None
+                    try:
+                        head_meta = await store_obj.head_async(key)
+                        if head_meta and head_meta.get("last_modified"):
+                            head_meta["last_modified"] = head_meta["last_modified"].isoformat()
+                    except Exception as exc:
+                        logger.warning("could not get object metadata for %s: %s", file_url, exc)
                     await asyncio.to_thread(
-                        save_manifest, cache_dir, file_url, ifd, manifest_store
+                        save_manifest, cache_dir, file_url, ifd, manifest_store, head_meta
                     )
             self._remember_manifest(manifest_key, manifest_store)
 
