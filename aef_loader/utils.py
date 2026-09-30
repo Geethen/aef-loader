@@ -334,6 +334,105 @@ def _is_quantized(tree: DataTree) -> bool:
     return False
 
 
+def _nodata_attr(da: xr.DataArray):
+    """The variable's ``nodata`` / ``_FillValue`` attr, or None."""
+    nodata = da.attrs.get("nodata", da.attrs.get("_FillValue"))
+    return None if nodata is None else nodata
+
+
+def _pixel_validity(ds: xr.Dataset, zone: str | None = None) -> xr.DataArray:
+    """Boolean ``(time, y, x)`` mask of pixels that hold data, with no ``band`` dim.
+
+    Raw TESSERA (has ``scales``): finite scales. Otherwise the ``embeddings``
+    variable decides: integer data needs a ``nodata``/``_FillValue`` attr
+    (``!= nodata`` in any band); float data uses non-null in any band (and, when
+    a finite nodata attr is present, ``!= nodata``). Integer data with no nodata
+    attr raises, since nothing distinguishes empty pixels from real codes.
+    """
+    if "scales" in ds.data_vars:
+        return np.isfinite(ds["scales"])
+    if "embeddings" not in ds.data_vars:
+        raise ValueError(f"zone {zone!r} has no 'embeddings' or 'scales' variable")
+    emb = ds["embeddings"]
+    nodata = _nodata_attr(emb)
+    if np.issubdtype(emb.dtype, np.integer):
+        if nodata is None:
+            raise ValueError(
+                f"zone {zone!r}: integer variable 'embeddings' has no nodata/"
+                "_FillValue attr, so pixel validity cannot be determined"
+            )
+        valid = emb != nodata
+    else:
+        valid = emb.notnull()
+        if nodata is not None and not math.isnan(nodata):
+            valid = valid & (emb != nodata)
+    return valid.any("band") if "band" in valid.dims else valid
+
+
+def _align_fill(da: xr.DataArray):
+    """Fill value for a variable's gaps: its nodata for ints, NaN for floats."""
+    if np.issubdtype(da.dtype, np.integer):
+        nodata = _nodata_attr(da)
+        return 0 if nodata is None else int(nodata)
+    return np.nan
+
+
+def _merge_zone_datasets(datasets: list[xr.Dataset]) -> xr.Dataset:
+    """Merge zone datasets on a common grid, one source zone per pixel.
+
+    ``take = ~valid_so_far & valid_next`` is computed once per zone from
+    ``_pixel_validity`` and applied to every variable, so e.g. TESSERA codes and
+    scales of one pixel never come from different zones. ``time`` (and ``band``)
+    are outer-aligned first, filling each variable with its own nodata. Merging
+    is elementwise ``xr.where`` (not ``combine_first``, which reindexes ``band``
+    and fragments its chunks), so chunk structure is preserved.
+    """
+    names = [ds.attrs.get("source_zone") for ds in datasets]
+    valids = [_pixel_validity(ds, n) for ds, n in zip(datasets, names)]
+
+    for dim in ("time", "band"):
+        if not all(dim in ds.dims for ds in datasets):
+            continue
+        indexes = [ds.indexes[dim] for ds in datasets]
+        if all(idx.equals(indexes[0]) for idx in indexes[1:]):
+            continue
+        union = indexes[0]
+        for idx in indexes[1:]:
+            union = union.union(idx, sort=None)
+        aligned = []
+        for ds in datasets:
+            fills = {var: _align_fill(ds[var]) for var in ds.data_vars}
+            attrs = {var: ds[var].attrs for var in ds.data_vars}
+            new = ds.reindex({dim: union}, fill_value=fills)
+            for var, var_attrs in attrs.items():
+                new[var].attrs = var_attrs
+            aligned.append(new)
+        datasets = aligned
+        if dim == "time":
+            valids = [v.reindex(time=union, fill_value=False) for v in valids]
+
+    combined = datasets[0]
+    valid_combined = valids[0]
+    for ds, valid_next in zip(datasets[1:], valids[1:]):
+        take = ~valid_combined & valid_next
+        for var in ds.data_vars:
+            if var not in combined.data_vars:
+                # Only this zone has the variable: earlier-zone pixels get nodata.
+                fill = _align_fill(ds[var])
+                base = ds[var].where(~valid_combined, fill).astype(ds[var].dtype)
+                base.attrs = ds[var].attrs
+                combined[var] = base
+                continue
+            attrs = combined[var].attrs
+            dims = combined[var].dims
+            merged = xr.where(take, ds[var], combined[var], keep_attrs=True)
+            # xr.where broadcasts ``take`` first; restore the original dim order.
+            combined[var] = merged.transpose(*dims)
+            combined[var].attrs = attrs
+        valid_combined = valid_combined | valid_next
+    return combined
+
+
 def reproject_datatree(
     tree: DataTree,
     target_geobox: GeoBox,
@@ -352,10 +451,12 @@ def reproject_datatree(
     executes when .compute() is called. Chunks are loaded and reprojected
     on-demand.
 
-    For combining zones, this uses xarray's combine_first which:
-    - Uses values from earlier zones where available (non-NaN)
-    - Fills NaN regions with values from subsequent zones
+    For combining zones, each pixel is taken from exactly one zone for all of its
+    variables (see ``_pixel_validity``):
+    - Uses values from earlier zones where the pixel is valid
+    - Fills invalid pixels with values from subsequent zones
     - In true overlapping regions (both have valid data), earlier zones take precedence
+    - Zones with different years (or bands) are outer-aligned first
 
     Since overlapping regions contain reprojections of the same underlying data,
     values should be identical regardless of which zone they come from.
@@ -437,33 +538,8 @@ def reproject_datatree(
     if len(reprojected_datasets) == 1:
         return reprojected_datasets[0]
 
-    # Merge with xr.where to preserve chunk structure.
-    # combine_first triggers xr.align(join="outer") which reindexes the band
-    # dimension, fragmenting band chunks. Since all datasets share the same
-    # target GeoBox, they have identical shapes and coordinates, so we can
-    # merge directly with xr.where (a blockwise op that preserves chunks).
-    combined = reprojected_datasets[0]
-    for ds in reprojected_datasets[1:]:
-        for var in combined.data_vars:
-            if var not in ds.data_vars:
-                continue
-            if combined[var].shape != ds[var].shape:
-                raise ValueError(
-                    f"Shape mismatch merging zones for '{var}': "
-                    f"{combined[var].shape} vs {ds[var].shape}"
-                )
-            # For integer dtypes (e.g. int8), nodata is a sentinel value, not NaN.
-            # Read it from the variable attrs (set by xr_reproject from src nodata).
-            nodata = combined[var].attrs.get(
-                "nodata", combined[var].attrs.get("_FillValue")
-            )
-            if nodata is not None and not (
-                isinstance(nodata, float) and math.isnan(nodata)
-            ):
-                mask = combined[var] == nodata
-            else:
-                mask = combined[var].isnull()
-            combined[var] = xr.where(mask, ds[var], combined[var], keep_attrs=True)
+    # Merge each pixel from exactly one zone (see _merge_zone_datasets).
+    combined = _merge_zone_datasets(reprojected_datasets)
 
     # Re-stamp nodata on the final merged dataset to ensure consistency.
     if dst_nodata is not None:
