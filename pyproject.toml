@@ -38,6 +38,7 @@ benchmark = [
     "geedim",
     "earthengine-api",
     "matplotlib",
+    "psutil",
 ]
 dev = [
     "pytest>=8.0.0",

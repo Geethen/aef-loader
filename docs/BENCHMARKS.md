@@ -27,6 +27,20 @@ Environment: pixi, conda-forge Python 3.12. The packages were virtual-tiff 0.5.0
 
 **Fetch time** is measured from the moment the chip is requested until a NumPy array is in memory. It starts after Earth Engine is initialized, or after the AEF index is loaded and queried. The figures are the median and range over 5 runs, in seconds.
 
+**Instrumentation.** Each Source Cooperative run also records `obstore_requests` and
+`obstore_bytes` (calls to, and bytes returned by, the `obstore` get/get_range(s) functions,
+which is where VirtualiZarr issues its reads; requests made entirely inside Rust are not
+seen), `peak_rss_bytes` for the worker process, and splits wall time into `open_s`,
+`build_s` (graph construction) and `read_s`. These are `null` for Earth Engine.
+
+First instrumented live run (30 September 2026, one repeat, native chunks): a 256 × 256
+chip took 64 range requests (one 1024 × 1024 block per band) plus 2 header requests when
+the manifest cache was cold, and received **28.0 MB to deliver a 4.2 MB int8 payload
+(about 6.7× read amplification)**. A 1024 × 1024 chip spanning four blocks took 256
+requests and 111 MB for a 67 MB payload. The whole compressed block is the minimum read,
+which is why small chips cost far more than their payload.
+
+
 | Chip | Method | Payload | Fetch | Open (header/manifest) | Read (pixels) |
 |---|---|---:|---:|---:|---:|
 | 256 × 256 × 64 | geedim | 16.8 MB float32 | **6.95** (5.89–7.67) | n/a | n/a |

@@ -141,10 +141,9 @@ async def run_aef(size: int, *, plus: bool, manifest_dir: str | None,
         reader_ctx = VirtualTiffReader()
     async with reader_ctx as reader:
         if plus:
-            # Shrink by 1 m so the half-pixel margin does not add an edge row.
-            # A separate fix is making the reader's bbox crop exact; remove this
-            # shrink once that lands.
-            inner = (minx + 1, miny + 1, maxx - 1, maxy - 1)
+            # The reader's bbox crop is exact (selects exactly the covered cells),
+            # so no shrink is needed.
+            inner = (minx, miny, maxx, maxy)
             tree = await reader.open_tiles_by_zone(
                 tiles, chunks=chunks, bbox=inner, bbox_crs=CRS
             )
@@ -159,11 +158,13 @@ async def run_aef(size: int, *, plus: bool, manifest_dir: str | None,
         # AEF COGs are stored south-up; flip to north-up to match Earth Engine.
         da = da.sel(x=slice(minx + half, maxx - half), y=yslice).sortby("y", ascending=False)
         t2 = perf_counter()
+        t_build = t2 - (t1 + t_open)
         values = np.asarray(da.transpose("band", "y", "x").values)
         t_read = perf_counter() - t2
     return {
         "init_s": t_init,
         "open_s": t_open,
+        "build_s": t_build,
         "read_s": t_read,
         "fetch_s": perf_counter() - t1,
         "tiles": len(tiles),
@@ -172,14 +173,102 @@ async def run_aef(size: int, *, plus: bool, manifest_dir: str | None,
     }
 
 
+_OBSTORE_REQS = 0
+_OBSTORE_BYTES = 0
+
+def patch_obstore():
+    """
+    Monkeypatch obstore to count network requests and bytes received.
+    This hooks the Python-level get/get_range/get_ranges functions.
+    Misses any requests made directly within Rust (e.g., if a Rust function
+    calls another Rust function directly without crossing the Python boundary),
+    but catches the primary fetch calls from virtualizarr / fsspec.
+    """
+    try:
+        import obstore
+    except ImportError:
+        return
+    
+    orig_get = obstore.get
+    orig_get_async = obstore.get_async
+    orig_get_range = obstore.get_range
+    orig_get_range_async = obstore.get_range_async
+    orig_get_ranges = obstore.get_ranges
+    orig_get_ranges_async = obstore.get_ranges_async
+
+    def _record(size):
+        global _OBSTORE_REQS, _OBSTORE_BYTES
+        _OBSTORE_REQS += 1
+        _OBSTORE_BYTES += size
+
+    # Whole-object get(): the body is streamed lazily, so record the object's
+    # size as an upper bound. The AEF read path uses get_range(s); get() only
+    # appears for small objects such as the index.
+    def my_get(*args, **kwargs):
+        res = orig_get(*args, **kwargs)
+        _record(res.meta["size"])
+        return res
+        
+    async def my_get_async(*args, **kwargs):
+        res = await orig_get_async(*args, **kwargs)
+        _record(res.meta["size"])
+        return res
+        
+    def my_get_range(*args, **kwargs):
+        res = orig_get_range(*args, **kwargs)
+        _record(len(res))
+        return res
+        
+    async def my_get_range_async(*args, **kwargs):
+        res = await orig_get_range_async(*args, **kwargs)
+        _record(len(res))
+        return res
+        
+    def my_get_ranges(*args, **kwargs):
+        res = orig_get_ranges(*args, **kwargs)
+        _record(sum(len(b) for b in res))
+        return res
+        
+    async def my_get_ranges_async(*args, **kwargs):
+        res = await orig_get_ranges_async(*args, **kwargs)
+        _record(sum(len(b) for b in res))
+        return res
+        
+    obstore.get = my_get
+    obstore.get_async = my_get_async
+    obstore.get_range = my_get_range
+    obstore.get_range_async = my_get_range_async
+    obstore.get_ranges = my_get_ranges
+    obstore.get_ranges_async = my_get_ranges_async
+
+def get_peak_rss_bytes() -> int:
+    import psutil, os, sys
+    try:
+        p = psutil.Process(os.getpid())
+        if sys.platform == "win32":
+            return p.memory_info().peak_wset
+        else:
+            import resource
+            ru = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            return ru * 1024 if sys.platform.startswith("linux") else ru
+    except Exception:
+        return 0
+
 def worker(method: str, size: int, manifest_dir: str | None, save: str | None) -> None:
+    patch_obstore()
     if method == "geedim":
         result = run_geedim(size)
+        result["obstore_requests"] = None
+        result["obstore_bytes"] = None
     else:
         result = asyncio.run(
             run_aef(size, plus=method.startswith("plus"), manifest_dir=manifest_dir,
                     chunks="all-bands" if method.endswith("allbands") else "native")
         )
+        result["obstore_requests"] = _OBSTORE_REQS
+        result["obstore_bytes"] = _OBSTORE_BYTES
+
+    result["peak_rss_bytes"] = get_peak_rss_bytes()
     values = result.pop("values")
     result["check"] = checksum(values)
     if save:
@@ -391,7 +480,7 @@ def driver(sizes, repeats, repeats_large, out_path, methods, keep_workdir: bool)
                             else None)
                     r = spawn(method, size, env, manifest_dir=mdir)
                     r["rep"] = rep
-                    print(json.dumps({k: r[k] for k in ("method", "size", "rep", "fetch_s", "process_wall_s")}), flush=True)
+                    print(json.dumps({k: r[k] for k in ("method", "size", "rep", "fetch_s", "process_wall_s", "obstore_requests", "obstore_bytes", "peak_rss_bytes") if k in r}), flush=True)
                     results.append(r)
 
             results.append({
