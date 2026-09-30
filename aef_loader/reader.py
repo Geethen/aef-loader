@@ -33,6 +33,7 @@ try:
 except ImportError:  # Compatibility with older VirtualiZarr releases
     from virtualizarr.registry import ObjectStoreRegistry
 
+from aef_loader.blockcache import BlockCache, CachingStore
 from aef_loader.cache import load_cached_manifest, save_manifest
 from aef_loader.collection import AEF, Collection
 from aef_loader.constants import AEF_NODATA_VALUE, SOURCE_COOP_REGION
@@ -354,6 +355,7 @@ class VirtualTiffReader:
         memory_manifest_cache_size: int = 128,
         collection: Collection = AEF,
         manifest_validation: Literal["none", "head"] = "none",
+        block_cache_bytes: int | None = None,
     ):
         """
         Initialize the virtual TIFF reader.
@@ -374,6 +376,11 @@ class VirtualTiffReader:
                 Foundations.
             manifest_validation: Whether to validate cached manifests against the
                 remote object's identity ("head") or trust the cache ("none").
+            block_cache_bytes: When set, keep up to this many bytes of
+                compressed COG blocks in an in-memory LRU between zarr and the
+                object store, so blocks read again (by later chips or calls on
+                this reader) are not re-fetched. Values are unchanged. Hits,
+                misses and size appear in ``stats``. None (default) disables it.
         """
         self.collection = collection
         self.gcp_project = gcp_project
@@ -384,6 +391,9 @@ class VirtualTiffReader:
         self.manifest_validation = manifest_validation
         self.manifest_cache_dir = (
             Path(manifest_cache_dir) if manifest_cache_dir is not None else None
+        )
+        self._block_cache = (
+            BlockCache(block_cache_bytes) if block_cache_bytes else None
         )
         self._stores: dict[str, object] = {}  # Cache stores by (protocol, bucket)
         self._registry = None
@@ -402,7 +412,10 @@ class VirtualTiffReader:
     @property
     def stats(self) -> dict[str, int | float]:
         """Snapshot of reader activity for repeatable performance measurements."""
-        return self._stats.copy()
+        stats = self._stats.copy()
+        if self._block_cache is not None:
+            stats.update(self._block_cache.stats)
+        return stats
 
     def _remember_manifest(self, key: tuple[str, int], manifest_store) -> None:
         if self.memory_manifest_cache_size == 0:
@@ -419,6 +432,8 @@ class VirtualTiffReader:
         self._stores.clear()
         self._registry = None
         self._manifest_cache.clear()
+        if self._block_cache is not None:
+            self._block_cache.clear()
 
     def _get_gcs_store(self, bucket: str) -> GCSStore:
         """Get or create an obstore GCSStore for a bucket."""
@@ -451,7 +466,16 @@ class VirtualTiffReader:
                 self._stores[store_key] = self._get_s3_store(bucket)
             else:
                 raise ValueError(f"Unsupported protocol: {protocol}")
+            self._stores[store_key] = self._with_block_cache(
+                self._stores[store_key], store_key
+            )
         return self._stores[store_key]
+
+    def _with_block_cache(self, store, base_url: str):
+        """Wrap ``store`` in the reader's block cache, if one is enabled."""
+        if self._block_cache is None:
+            return store
+        return CachingStore(store, self._block_cache, base_url)
 
     def _get_registry(self, protocol: PathProtocol, bucket: str):
         """Get or create an ObjectStoreRegistry for a bucket."""
