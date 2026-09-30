@@ -1,0 +1,2032 @@
+{
+  "index_download_s": 7.969420000000127,
+  "year": 2024,
+  "site": "freestate",
+  "crs": "EPSG:32735",
+  "origin": [
+    431000.0,
+    6875000.0
+  ],
+  "results": [
+    {
+      "init_s": 9.95353299999988,
+      "fetch_s": 5.875538100000085,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.016314060940253228
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 19.12347950000003,
+      "rep": 0
+    },
+    {
+      "init_s": 7.60759609999991,
+      "open_s": 2.929000900000119,
+      "read_s": 5.43557050000004,
+      "fetch_s": 8.370333600000095,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 19.326321000000007,
+      "rep": 0
+    },
+    {
+      "init_s": 7.7603968000000805,
+      "open_s": 2.9441578000000845,
+      "read_s": 4.249899400000004,
+      "fetch_s": 7.197330600000214,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 18.38282500000014,
+      "rep": 0
+    },
+    {
+      "init_s": 7.913965999999846,
+      "open_s": 1.1760001000000102,
+      "read_s": 5.626502900000105,
+      "fetch_s": 6.807456000000002,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 18.03084100000001,
+      "rep": 0
+    },
+    {
+      "init_s": 7.687924199999998,
+      "open_s": 2.95635110000012,
+      "read_s": 5.020067400000016,
+      "fetch_s": 7.981629600000133,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 19.073262500000055,
+      "rep": 1
+    },
+    {
+      "init_s": 7.744958600000018,
+      "open_s": 2.860246400000051,
+      "read_s": 3.7494764999999006,
+      "fetch_s": 6.613273700000036,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 17.735214999999926,
+      "rep": 1
+    },
+    {
+      "init_s": 7.388689200000044,
+      "open_s": 1.0642119999999977,
+      "read_s": 5.053969999999936,
+      "fetch_s": 6.121588900000006,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 16.873010600000043,
+      "rep": 1
+    },
+    {
+      "init_s": 9.796807400000034,
+      "fetch_s": 8.008461800000077,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.016314060940253228
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 21.099364899999955,
+      "rep": 1
+    },
+    {
+      "init_s": 7.6633787999999186,
+      "open_s": 2.943511499999886,
+      "read_s": 4.180096100000128,
+      "fetch_s": 7.128318499999978,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 18.183668099999977,
+      "rep": 2
+    },
+    {
+      "init_s": 7.881678800000145,
+      "open_s": 1.101149200000009,
+      "read_s": 4.471880999999939,
+      "fetch_s": 5.576541900000166,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 16.848363199999994,
+      "rep": 2
+    },
+    {
+      "init_s": 10.002308699999958,
+      "fetch_s": 6.003845599999977,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.016314060940253228
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 19.320457300000044,
+      "rep": 2
+    },
+    {
+      "init_s": 7.573838499999965,
+      "open_s": 2.8919565999999577,
+      "read_s": 5.476033599999937,
+      "fetch_s": 8.373743099999956,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 19.273415099999966,
+      "rep": 2
+    },
+    {
+      "init_s": 7.703641899999866,
+      "open_s": 1.1637878999999884,
+      "read_s": 5.89805199999978,
+      "fetch_s": 7.07051679999995,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 18.203653099999883,
+      "rep": 3
+    },
+    {
+      "init_s": 10.139041399999996,
+      "fetch_s": 6.362426500000083,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.016314060940253228
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 20.05543650000004,
+      "rep": 3
+    },
+    {
+      "init_s": 8.021580099999937,
+      "open_s": 2.908514700000069,
+      "read_s": 4.337848299999905,
+      "fetch_s": 7.2527798000000985,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 18.717292399999906,
+      "rep": 3
+    },
+    {
+      "init_s": 7.8022743999999875,
+      "open_s": 2.942752599999949,
+      "read_s": 3.980145099999845,
+      "fetch_s": 6.9274522999999135,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 18.128999699999895,
+      "rep": 3
+    },
+    {
+      "init_s": 9.836582700000008,
+      "fetch_s": 7.439850500000148,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.016314060940253228
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 20.61127079999983,
+      "rep": 4
+    },
+    {
+      "init_s": 7.717300000000023,
+      "open_s": 2.9301682000000255,
+      "read_s": 5.4726711000000705,
+      "fetch_s": 8.409030600000051,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 19.507340900000145,
+      "rep": 4
+    },
+    {
+      "init_s": 7.5720673000000716,
+      "open_s": 2.9554101000001083,
+      "read_s": 3.818293100000119,
+      "fetch_s": 6.779030400000011,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 17.746595699999943,
+      "rep": 4
+    },
+    {
+      "init_s": 7.5294476999999915,
+      "open_s": 1.0893447999999353,
+      "read_s": 4.769023099999913,
+      "fetch_s": 5.862948999999844,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 16.68103969999993,
+      "rep": 4
+    },
+    {
+      "method": "integrity",
+      "size": 256,
+      "upstream_equals_plus": true,
+      "shapes": [
+        [
+          64,
+          256,
+          256
+        ],
+        [
+          64,
+          256,
+          256
+        ],
+        [
+          64,
+          256,
+          256
+        ]
+      ],
+      "gee_vs_dequantized_max_abs_diff": 2.9802322387695312e-08,
+      "gee_vs_dequantized_mean_abs_diff": 5.73857444896575e-09
+    },
+    {
+      "init_s": 9.845290100000057,
+      "fetch_s": 6.654690599999867,
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "float32",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -0.01468028936037443
+      },
+      "method": "geedim",
+      "size": 512,
+      "process_wall_s": 20.2627765000002,
+      "rep": 0
+    },
+    {
+      "init_s": 8.156665299999986,
+      "open_s": 3.144105800000034,
+      "read_s": 4.544465399999808,
+      "fetch_s": 7.694672300000093,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "upstream",
+      "size": 512,
+      "process_wall_s": 19.61122420000038,
+      "rep": 0
+    },
+    {
+      "init_s": 8.332559700000274,
+      "open_s": 2.998915300000135,
+      "read_s": 4.7109856000001855,
+      "fetch_s": 7.7158079999999245,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus",
+      "size": 512,
+      "process_wall_s": 19.557358000000022,
+      "rep": 0
+    },
+    {
+      "init_s": 7.0370232000000215,
+      "open_s": 0.9908737999999175,
+      "read_s": 5.191723499999625,
+      "fetch_s": 6.185591999999815,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus_warm",
+      "size": 512,
+      "process_wall_s": 16.870983700000124,
+      "rep": 0
+    },
+    {
+      "init_s": 6.633978599999864,
+      "open_s": 2.6919530000000123,
+      "read_s": 4.141328599999724,
+      "fetch_s": 6.836219100000108,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "upstream",
+      "size": 512,
+      "process_wall_s": 16.71620830000029,
+      "rep": 1
+    },
+    {
+      "init_s": 6.913807200000065,
+      "open_s": 2.791987600000084,
+      "read_s": 4.229348800000025,
+      "fetch_s": 7.024290299999848,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus",
+      "size": 512,
+      "process_wall_s": 17.37755960000004,
+      "rep": 1
+    },
+    {
+      "init_s": 6.855275999999776,
+      "open_s": 0.9944940999998835,
+      "read_s": 4.9987183000002915,
+      "fetch_s": 5.996299999999792,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus_warm",
+      "size": 512,
+      "process_wall_s": 16.37068279999994,
+      "rep": 1
+    },
+    {
+      "init_s": 8.706586499999958,
+      "fetch_s": 7.208928000000014,
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "float32",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -0.01468028936037443
+      },
+      "method": "geedim",
+      "size": 512,
+      "process_wall_s": 19.459101700000247,
+      "rep": 1
+    },
+    {
+      "init_s": 6.310625699999946,
+      "open_s": 2.6987919999996848,
+      "read_s": 4.02961409999989,
+      "fetch_s": 6.731394399999772,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus",
+      "size": 512,
+      "process_wall_s": 16.339781099999982,
+      "rep": 2
+    },
+    {
+      "init_s": 7.031632700000046,
+      "open_s": 0.9725321999999323,
+      "read_s": 4.9002134000002115,
+      "fetch_s": 5.876636699999835,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus_warm",
+      "size": 512,
+      "process_wall_s": 16.116073799999867,
+      "rep": 2
+    },
+    {
+      "init_s": 8.91505429999961,
+      "fetch_s": 6.199124499999925,
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "float32",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -0.01468028936037443
+      },
+      "method": "geedim",
+      "size": 512,
+      "process_wall_s": 18.75781330000018,
+      "rep": 2
+    },
+    {
+      "init_s": 6.779122299999926,
+      "open_s": 2.7233851999999388,
+      "read_s": 4.111626100000194,
+      "fetch_s": 6.838019799999984,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "upstream",
+      "size": 512,
+      "process_wall_s": 16.849106599999686,
+      "rep": 2
+    },
+    {
+      "init_s": 6.739105099999961,
+      "open_s": 1.0268119000002116,
+      "read_s": 5.239221499999985,
+      "fetch_s": 6.2686821000002055,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus_warm",
+      "size": 512,
+      "process_wall_s": 16.153928199999882,
+      "rep": 3
+    },
+    {
+      "init_s": 9.322349400000348,
+      "fetch_s": 8.222705199999837,
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "float32",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -0.01468028936037443
+      },
+      "method": "geedim",
+      "size": 512,
+      "process_wall_s": 21.12780180000027,
+      "rep": 3
+    },
+    {
+      "init_s": 6.830929099999594,
+      "open_s": 2.829988499999672,
+      "read_s": 4.864646499999708,
+      "fetch_s": 7.698677500000031,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "upstream",
+      "size": 512,
+      "process_wall_s": 17.762699500000053,
+      "rep": 3
+    },
+    {
+      "init_s": 6.650856299999759,
+      "open_s": 2.80669510000007,
+      "read_s": 3.5084320000000844,
+      "fetch_s": 6.317825499999799,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus",
+      "size": 512,
+      "process_wall_s": 16.1676180999998,
+      "rep": 3
+    },
+    {
+      "init_s": 8.984631299999819,
+      "fetch_s": 6.178275299999768,
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "float32",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -0.01468028936037443
+      },
+      "method": "geedim",
+      "size": 512,
+      "process_wall_s": 18.78684199999998,
+      "rep": 4
+    },
+    {
+      "init_s": 6.638781699999981,
+      "open_s": 2.815892099999928,
+      "read_s": 4.508776099999977,
+      "fetch_s": 7.327953900000011,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "upstream",
+      "size": 512,
+      "process_wall_s": 17.24392480000006,
+      "rep": 4
+    },
+    {
+      "init_s": 6.8517469000003075,
+      "open_s": 2.7057190000000446,
+      "read_s": 3.721127400000114,
+      "fetch_s": 6.431566300000213,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus",
+      "size": 512,
+      "process_wall_s": 16.585617800000364,
+      "rep": 4
+    },
+    {
+      "init_s": 6.749518699999953,
+      "open_s": 0.9496569000002637,
+      "read_s": 4.839054399999895,
+      "fetch_s": 5.792105800000172,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          512,
+          512
+        ],
+        "dtype": "int8",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -4.966690421104431
+      },
+      "method": "plus_warm",
+      "size": 512,
+      "process_wall_s": 15.809068699999898,
+      "rep": 4
+    },
+    {
+      "method": "integrity",
+      "size": 512,
+      "upstream_equals_plus": true,
+      "shapes": [
+        [
+          64,
+          512,
+          512
+        ],
+        [
+          64,
+          512,
+          512
+        ],
+        [
+          64,
+          512,
+          512
+        ]
+      ],
+      "gee_vs_dequantized_max_abs_diff": 2.9802322387695312e-08,
+      "gee_vs_dequantized_mean_abs_diff": 5.783204898041766e-09
+    },
+    {
+      "init_s": 9.052243799999815,
+      "fetch_s": 13.807976000000053,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.01436820541488678
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 27.870067700000163,
+      "rep": 0
+    },
+    {
+      "init_s": 6.732895100000405,
+      "open_s": 2.941168099999686,
+      "read_s": 5.1664842000000135,
+      "fetch_s": 8.112572199999704,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 18.151369199999863,
+      "rep": 0
+    },
+    {
+      "init_s": 6.810320400000364,
+      "open_s": 3.220976199999768,
+      "read_s": 8.484605000000101,
+      "fetch_s": 11.711162999999942,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 21.8142342000001,
+      "rep": 0
+    },
+    {
+      "init_s": 6.6898785000003045,
+      "open_s": 0.9339703000000554,
+      "read_s": 10.297877900000003,
+      "fetch_s": 11.241960100000142,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 21.232953799999905,
+      "rep": 0
+    },
+    {
+      "init_s": 6.694687000000158,
+      "open_s": 2.733598499999971,
+      "read_s": 6.000697599999967,
+      "fetch_s": 8.739221400000133,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 18.734586600000057,
+      "rep": 1
+    },
+    {
+      "init_s": 6.701688499999818,
+      "open_s": 2.80463809999992,
+      "read_s": 7.52039300000024,
+      "fetch_s": 10.329659500000162,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 20.325959899999816,
+      "rep": 1
+    },
+    {
+      "init_s": 6.636042300000099,
+      "open_s": 1.004274500000065,
+      "read_s": 11.572415499999806,
+      "fetch_s": 12.581389500000114,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 22.526996200000212,
+      "rep": 1
+    },
+    {
+      "init_s": 9.409166599999935,
+      "fetch_s": 13.603555599999709,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.01436820541488678
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 27.938262799999848,
+      "rep": 1
+    },
+    {
+      "init_s": 6.723673899999994,
+      "open_s": 2.8128358999997545,
+      "read_s": 9.495410099999845,
+      "fetch_s": 12.317021099999693,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 22.365779799999927,
+      "rep": 2
+    },
+    {
+      "init_s": 6.815245799999957,
+      "open_s": 1.029998599999999,
+      "read_s": 9.807333199999903,
+      "fetch_s": 10.843838799999958,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 20.95620549999967,
+      "rep": 2
+    },
+    {
+      "init_s": 9.287703699999838,
+      "fetch_s": 14.786075699999856,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.01436820541488678
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 29.03438240000014,
+      "rep": 2
+    },
+    {
+      "init_s": 6.748617000000195,
+      "open_s": 2.9568804000000455,
+      "read_s": 5.703873000000385,
+      "fetch_s": 8.665210099999967,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 18.804857500000253,
+      "rep": 2
+    },
+    {
+      "init_s": 6.6762643000001844,
+      "open_s": 0.9619124999999258,
+      "read_s": 9.911779400000341,
+      "fetch_s": 10.878794199999902,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 20.86215379999976,
+      "rep": 3
+    },
+    {
+      "init_s": 8.30351759999985,
+      "fetch_s": 12.986850799999957,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.01436820541488678
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 26.243065399999978,
+      "rep": 3
+    },
+    {
+      "init_s": 6.703842700000223,
+      "open_s": 2.749260900000081,
+      "read_s": 5.43507690000024,
+      "fetch_s": 8.188172900000154,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 18.33265859999983,
+      "rep": 3
+    },
+    {
+      "init_s": 7.022938700000395,
+      "open_s": 2.7257442000000083,
+      "read_s": 8.864804099999674,
+      "fetch_s": 11.595499500000187,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 21.92431149999993,
+      "rep": 3
+    },
+    {
+      "init_s": 9.17939380000007,
+      "fetch_s": 13.121224900000016,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.01436820541488678
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 27.27595569999994,
+      "rep": 4
+    },
+    {
+      "init_s": 6.550298999999995,
+      "open_s": 2.7610626999999113,
+      "read_s": 5.564117000000351,
+      "fetch_s": 8.329115399999864,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 18.230510200000026,
+      "rep": 4
+    },
+    {
+      "init_s": 7.177752500000224,
+      "open_s": 2.7837555000000975,
+      "read_s": 8.423410399999739,
+      "fetch_s": 11.214331100000436,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 21.66160039999977,
+      "rep": 4
+    },
+    {
+      "init_s": 6.858635000000049,
+      "open_s": 0.9856519999998454,
+      "read_s": 8.738648199999716,
+      "fetch_s": 9.729210299999977,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 19.926954500000193,
+      "rep": 4
+    },
+    {
+      "method": "integrity",
+      "size": 1024,
+      "upstream_equals_plus": true,
+      "shapes": [
+        [
+          64,
+          1024,
+          1024
+        ],
+        [
+          64,
+          1024,
+          1024
+        ],
+        [
+          64,
+          1024,
+          1024
+        ]
+      ],
+      "gee_vs_dequantized_max_abs_diff": 2.9802322387695312e-08,
+      "gee_vs_dequantized_mean_abs_diff": 5.824637872063956e-09
+    },
+    {
+      "init_s": 20.50461370000039,
+      "fetch_s": 38.495444000000134,
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "float32",
+        "nbytes": 1073741824,
+        "finite_fraction": 1.0,
+        "mean": -0.013809929054238291
+      },
+      "method": "geedim",
+      "size": 2048,
+      "process_wall_s": 71.57874809999976,
+      "rep": 0
+    },
+    {
+      "init_s": 9.610232099999848,
+      "open_s": 4.409168000000136,
+      "read_s": 7.858362800000123,
+      "fetch_s": 12.272257300000092,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "upstream",
+      "size": 2048,
+      "process_wall_s": 25.662767099999655,
+      "rep": 0
+    },
+    {
+      "init_s": 6.857795200000055,
+      "open_s": 2.9726090999997723,
+      "read_s": 13.969245999999657,
+      "fetch_s": 16.953400999999758,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus",
+      "size": 2048,
+      "process_wall_s": 27.654763099999855,
+      "rep": 0
+    },
+    {
+      "init_s": 6.733170900000005,
+      "open_s": 1.0348723000001883,
+      "read_s": 15.06032230000028,
+      "fetch_s": 16.10294580000027,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus_warm",
+      "size": 2048,
+      "process_wall_s": 26.652445400000033,
+      "rep": 0
+    },
+    {
+      "init_s": 6.547836899999766,
+      "open_s": 2.7985693000000538,
+      "read_s": 7.188082499999837,
+      "fetch_s": 9.990538400000332,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "upstream",
+      "size": 2048,
+      "process_wall_s": 20.442155400000047,
+      "rep": 1
+    },
+    {
+      "init_s": 6.644882099999904,
+      "open_s": 2.737095400000271,
+      "read_s": 14.337971299999936,
+      "fetch_s": 17.088480400000208,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus",
+      "size": 2048,
+      "process_wall_s": 27.421355699999822,
+      "rep": 1
+    },
+    {
+      "init_s": 6.746972800000094,
+      "open_s": 0.9260511000002225,
+      "read_s": 15.405404099999942,
+      "fetch_s": 16.34213260000024,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus_warm",
+      "size": 2048,
+      "process_wall_s": 26.826237199999923,
+      "rep": 1
+    },
+    {
+      "init_s": 8.90057680000018,
+      "fetch_s": 42.75367069999993,
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "float32",
+        "nbytes": 1073741824,
+        "finite_fraction": 1.0,
+        "mean": -0.013809929054238291
+      },
+      "method": "geedim",
+      "size": 2048,
+      "process_wall_s": 62.23477360000015,
+      "rep": 1
+    },
+    {
+      "init_s": 6.650332400000025,
+      "open_s": 2.8604449999997996,
+      "read_s": 14.189442900000358,
+      "fetch_s": 17.058613799999875,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus",
+      "size": 2048,
+      "process_wall_s": 27.427053100000194,
+      "rep": 2
+    },
+    {
+      "init_s": 6.8265934000000925,
+      "open_s": 0.9463522999999441,
+      "read_s": 14.852456200000233,
+      "fetch_s": 15.81126489999997,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-ngihwnlr\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus_warm",
+      "size": 2048,
+      "process_wall_s": 26.54501429999982,
+      "rep": 2
+    },
+    {
+      "init_s": 8.95448239999996,
+      "fetch_s": 39.59586360000003,
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "float32",
+        "nbytes": 1073741824,
+        "finite_fraction": 1.0,
+        "mean": -0.013809929054238291
+      },
+      "method": "geedim",
+      "size": 2048,
+      "process_wall_s": 58.834355499999674,
+      "rep": 2
+    },
+    {
+      "init_s": 6.260918800000127,
+      "open_s": 2.608519299999898,
+      "read_s": 7.070118499999808,
+      "fetch_s": 9.682178799999747,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "upstream",
+      "size": 2048,
+      "process_wall_s": 19.58542219999981,
+      "rep": 2
+    },
+    {
+      "method": "integrity",
+      "size": 2048,
+      "upstream_equals_plus": true,
+      "shapes": [
+        [
+          64,
+          2048,
+          2048
+        ],
+        [
+          64,
+          2048,
+          2048
+        ],
+        [
+          64,
+          2048,
+          2048
+        ]
+      ],
+      "gee_vs_dequantized_max_abs_diff": 2.9802322387695312e-08,
+      "gee_vs_dequantized_mean_abs_diff": 5.801104534621567e-09
+    },
+    {
+      "method": "upstream",
+      "size": 4096,
+      "rep": 0,
+      "fetch_s": 16.8209209000006,
+      "process_wall_s": 31.066707200000565
+    },
+    {
+      "method": "plus",
+      "size": 4096,
+      "rep": 0,
+      "fetch_s": 36.77530449999995,
+      "process_wall_s": 50.96910519999983
+    },
+    {
+      "method": "plus_warm",
+      "size": 4096,
+      "rep": 0,
+      "fetch_s": 34.51394590000018,
+      "process_wall_s": 46.726043699999536
+    },
+    {
+      "method": "plus",
+      "size": 4096,
+      "rep": 1,
+      "fetch_s": 34.08979779999936,
+      "process_wall_s": 46.37248610000006
+    },
+    {
+      "method": "plus_warm",
+      "size": 4096,
+      "rep": 1,
+      "fetch_s": 33.7952652999993,
+      "process_wall_s": 46.061496199999965
+    },
+    {
+      "method": "upstream",
+      "size": 4096,
+      "rep": 1,
+      "fetch_s": 18.947495399999752,
+      "process_wall_s": 31.753403400000025
+    },
+    {
+      "method": "plus_warm",
+      "size": 4096,
+      "rep": 2,
+      "fetch_s": 36.646561000000474,
+      "process_wall_s": 61.726411599999665
+    },
+    {
+      "method": "upstream",
+      "size": 4096,
+      "rep": 2,
+      "fetch_s": 15.686831699999857,
+      "process_wall_s": 29.866183699999965
+    },
+    {
+      "method": "plus",
+      "size": 4096,
+      "rep": 2,
+      "fetch_s": 37.52568639999936,
+      "process_wall_s": 51.752803700000186
+    },
+    {
+      "init_s": 6.856323899999552,
+      "open_s": 1.0343481999998403,
+      "read_s": 6.091866500000833,
+      "fetch_s": 7.130234700000074,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm_allbands",
+      "size": 256,
+      "process_wall_s": 17.186760699999468,
+      "rep": 0
+    },
+    {
+      "init_s": 6.664453700000195,
+      "open_s": 0.9501349000001937,
+      "read_s": 4.880134999999427,
+      "fetch_s": 5.832940700000108,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm_allbands",
+      "size": 256,
+      "process_wall_s": 15.701909200000046,
+      "rep": 1
+    },
+    {
+      "init_s": 6.665619499999593,
+      "open_s": 0.9329015000002983,
+      "read_s": 5.294506100000035,
+      "fetch_s": 6.229962800000067,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -5.201023578643799
+      },
+      "method": "plus_warm_allbands",
+      "size": 256,
+      "process_wall_s": 16.06558699999914,
+      "rep": 2
+    },
+    {
+      "init_s": 6.712650200000098,
+      "open_s": 0.9198374999996304,
+      "read_s": 5.6126750000003085,
+      "fetch_s": 6.53521339999952,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm_allbands",
+      "size": 1024,
+      "process_wall_s": 16.58606900000086,
+      "rep": 0
+    },
+    {
+      "init_s": 6.714565799999946,
+      "open_s": 0.9312274000003526,
+      "read_s": 6.854536499999995,
+      "fetch_s": 7.788635900000372,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm_allbands",
+      "size": 1024,
+      "process_wall_s": 17.89370830000007,
+      "rep": 1
+    },
+    {
+      "init_s": 6.7488133999995625,
+      "open_s": 0.982253899999705,
+      "read_s": 6.05770560000019,
+      "fetch_s": 7.0444501000001765,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -4.901766866445541
+      },
+      "method": "plus_warm_allbands",
+      "size": 1024,
+      "process_wall_s": 17.12777129999995,
+      "rep": 2
+    },
+    {
+      "init_s": 6.809526400000323,
+      "open_s": 0.9220170999997208,
+      "read_s": 9.079267000000982,
+      "fetch_s": 10.007247800000187,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus_warm_allbands",
+      "size": 2048,
+      "process_wall_s": 20.657397499999206,
+      "rep": 0
+    },
+    {
+      "init_s": 6.892653599999903,
+      "open_s": 0.9447172999989562,
+      "read_s": 9.568564899998819,
+      "fetch_s": 10.519067199998972,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus_warm_allbands",
+      "size": 2048,
+      "process_wall_s": 21.232964200000424,
+      "rep": 1
+    },
+    {
+      "init_s": 6.783473000001322,
+      "open_s": 0.9262887000004412,
+      "read_s": 7.411036400000739,
+      "fetch_s": 8.342650399999911,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          2048,
+          2048
+        ],
+        "dtype": "int8",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -4.621179301291704
+      },
+      "method": "plus_warm_allbands",
+      "size": 2048,
+      "process_wall_s": 18.840020800000275,
+      "rep": 2
+    },
+    {
+      "init_s": 14.872746900000493,
+      "open_s": 0.9185679999991407,
+      "read_s": 14.099323399999776,
+      "fetch_s": 15.021427399999084,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "dtype": "int8",
+        "nbytes": 1073741824,
+        "finite_fraction": 1.0,
+        "mean": -4.288194419816136
+      },
+      "method": "plus_warm_allbands",
+      "size": 4096,
+      "process_wall_s": 38.37858799999958,
+      "rep": 0
+    },
+    {
+      "init_s": 6.821551399998498,
+      "open_s": 0.9637640000000829,
+      "read_s": 14.236149899999873,
+      "fetch_s": 15.20579429999998,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "dtype": "int8",
+        "nbytes": 1073741824,
+        "finite_fraction": 1.0,
+        "mean": -4.288194419816136
+      },
+      "method": "plus_warm_allbands",
+      "size": 4096,
+      "process_wall_s": 27.98025129999951,
+      "rep": 1
+    },
+    {
+      "init_s": 6.756110499998613,
+      "open_s": 0.9745983999982855,
+      "read_s": 15.347358600000007,
+      "fetch_s": 16.325902399999904,
+      "tiles": 1,
+      "module": "C:\\Users\\GEETHE~1.SIN\\AppData\\Local\\Temp\\aef-chip-bench-sssuprng\\fork\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          4096,
+          4096
+        ],
+        "dtype": "int8",
+        "nbytes": 1073741824,
+        "finite_fraction": 1.0,
+        "mean": -4.288194419816136
+      },
+      "method": "plus_warm_allbands",
+      "size": 4096,
+      "process_wall_s": 29.39415740000004,
+      "rep": 2
+    }
+  ],
+  "note": "Sizes 256-2048: run 1 (5 repeats up to 1024 px, 3 at 2048). 4096 px upstream/plus/plus_warm: run 2, recovered from log (no open/read split). plus_warm_allbands: separate run, 3 repeats per size (256, 1024, 2048, 4096). Earth Engine not run at 4096 px."
+}
