@@ -16,7 +16,7 @@ We can use `virtualizarr.VirtualiZarrDatasetAccessor` to export the xarray datas
 ### 1. Kerchunk JSON
 - **API:** `ds.virtualize.to_kerchunk(format="json")` (`virtualizarr/accessor.py:171`).
 - **Pros:** Human-readable, ubiquitous ecosystem support (fsspec `ReferenceFileSystem`).
-- **Cons:** ~20M refs per zone is huge as a JSON (likely 1-2 GB). Loading this single monolithic JSON into memory for a single zone takes time and high memory, defying the fast-start goal.
+- **Cons:** ~0.8 M refs per zone-year (max ~3 M) is large as JSON (roughly 0.1-0.4 GB per partition at ~130 B/ref; estimate, not measured). Loading this single monolithic JSON into memory for a single zone takes time and high memory, defying the fast-start goal.
 
 ### 2. Kerchunk Parquet
 - **API:** `ds.virtualize.to_kerchunk(format="parquet")` (`virtualizarr/accessor.py:171`).
