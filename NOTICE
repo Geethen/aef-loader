@@ -8,3 +8,5 @@ Modifications are listed in docs/CHANGES.md and docs/upstream.diff.
 
 The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and
 Google DeepMind and licensed under CC-BY 4.0.
+
+TESSERA embeddings (https://geotessera.org) are produced by the University of Cambridge and hosted on Source Cooperative.

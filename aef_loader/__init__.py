@@ -4,7 +4,8 @@ AEF Loader - Efficient loader for Alpha Earth Foundations embeddings.
 Uses virtual-tiff to create virtual zarr stores from COGs,
 enabling lazy xarray/dask operations without data duplication.
 
-Supports both Google Cloud Storage (GCS) and Source Cooperative (AWS S3) backends.
+Supports both Google Cloud Storage (GCS) and Source Cooperative (AWS S3) backends,
+and TESSERA embeddings (Zarr on Source Cooperative) via open_tessera().
 
 The primary access pattern is loading tiles by UTM zone using VirtualTiffReader.open_tiles_by_zone().
 For combining data across zones, use reproject_datatree() from the utils module.
@@ -13,6 +14,7 @@ For combining data across zones, use reproject_datatree() from the utils module.
 from aef_loader.constants import DataSource
 from aef_loader.index import AEFIndex
 from aef_loader.reader import VirtualTiffReader
+from aef_loader.tessera import open_tessera
 from aef_loader.types import AEFTileInfo
 from aef_loader.utils import (
     aoi_geobox,
@@ -37,6 +39,7 @@ __all__ = [
     "dequantize_aef",
     "int8_to_float32",
     "mask_nodata",
+    "open_tessera",
     "quantize_aef",
     "reproject_datatree",
     "set_aef_nodata",

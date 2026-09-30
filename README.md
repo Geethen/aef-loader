@@ -78,6 +78,28 @@ async def main():
 asyncio.run(main())
 ```
 
+## TESSERA embeddings
+
+Besides AEF, `open_tessera` reads [TESSERA](https://geotessera.org) embeddings (128 bands, 10 m, yearly 2017–2025)
+from the [Source Cooperative Zarr store](https://source.coop/tessera/tessera/zarr/v1.1-dclimate). It returns the same
+DataTree-by-UTM-zone layout as the AEF reader, so `reproject_datatree` works on it.
+
+```python
+from aef_loader import open_tessera, reproject_datatree
+from odc.geo.geobox import GeoBox
+
+bbox = (5.6, 58.7, 5.63, 58.72)
+tree = open_tessera(bbox, years=(2023, 2024), dequantize=True)   # lazy, nothing downloaded yet
+target = GeoBox.from_bbox(bbox, crs="EPSG:4326", resolution=0.0002)
+ds = reproject_datatree(tree, target, resampling="bilinear").compute()
+```
+
+- `dequantize=False` (default) returns int8 `embeddings` plus per-pixel `scales` (value = `embeddings * scales`);
+  `dequantize=True` returns float32 with water and never-written pixels as NaN.
+- `years` is a year, an inclusive `(start, end)` tuple, or a list; `zones=[31, 32]` forces UTM zones;
+  `include_quality=True` adds the Sentinel observation-count variables.
+- Bboxes may be in any CRS (`bbox_crs=`). Southern-hemisphere sites use the same `utmNN` groups (north-referenced, negative northings).
+- TESSERA is produced by the University of Cambridge; check its [licence terms](https://geotessera.org) before redistributing.
 ## Hosts
 
 | Host | Access | Notes |

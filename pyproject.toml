@@ -9,7 +9,7 @@ authors = [
     { name = "Geethen Singh" },
     { name = "Jake Wilkins"},
 ]
-keywords = ["alphaearth", "embeddings", "satellite", "virtualizarr", "xarray", "cog"]
+keywords = ["alphaearth", "tessera", "embeddings", "satellite", "virtualizarr", "xarray", "cog"]
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.12",
@@ -63,3 +63,4 @@ include = ["aef_loader", "tests", "docs", "README.md", "LICENSE", "NOTICE"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = ["slow: hits real cloud data; run with pytest -m slow"]

@@ -118,3 +118,6 @@ cache); then A (the `chunks=None` fix) and G (fill_value) as the correctness/
 performance fixes, each with a regression test. A is worth calling out to the
 maintainer as a bug report on its own — the recommended `chunks=None` path is
 ~100 s/tile today.
+
+### H. TESSERA support (`aef_loader/tessera.py`, new)
+Lazy `open_tessera(bbox, bbox_crs, years, zones=, dequantize=, include_quality=)` over the Source Cooperative Zarr v3 store (`v1.1-dclimate`). Crops by pixel index with no resampling, returns a DataTree by UTM zone compatible with `reproject_datatree`. Verified live on a Norwegian (31N) and a South African (35N) site.
