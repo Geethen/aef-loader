@@ -793,6 +793,14 @@ class VirtualTiffReader:
                     else:
                         self._stats["disk_manifest_hits"] += 1
             if manifest_store is None:
+                # HEAD before the parse: the identity stored with this manifest may
+                # then only be older than the parsed bytes, never newer. An object
+                # replaced in between is caught as stale on the next validation
+                # instead of being recorded with the new object's ETag.
+                head_meta = None
+                if validate or cache_dir is not None or self._block_cache is not None:
+                    head_meta = await head_once()
+                identity = self._object_identity(head_meta)
                 manifest_store = await asyncio.to_thread(
                     parser,
                     url=file_url,
@@ -802,24 +810,16 @@ class VirtualTiffReader:
                 # go through the reader's (possibly caching) registry.
                 manifest_store._registry = registry
                 self._stats["manifest_parses"] += 1
-                if validate or cache_dir is not None or self._block_cache is not None:
-                    store_obj = self._get_store(protocol, bucket)
-                    head_meta = None
-                    try:
-                        head_meta = dict(await store_obj.head_async(key))
-                    except Exception as exc:
-                        logger.warning("could not get object metadata for %s: %s", file_url, exc)
-                    identity = self._object_identity(head_meta)
-                    if cache_dir is not None:
-                        saved_meta = head_meta
-                        if saved_meta and saved_meta.get("last_modified"):
-                            saved_meta = {
-                                **saved_meta,
-                                "last_modified": saved_meta["last_modified"].isoformat(),
-                            }
-                        await asyncio.to_thread(
-                            save_manifest, cache_dir, file_url, ifd, manifest_store, saved_meta
-                        )
+                if cache_dir is not None:
+                    saved_meta = head_meta
+                    if saved_meta and saved_meta.get("last_modified"):
+                        saved_meta = {
+                            **saved_meta,
+                            "last_modified": saved_meta["last_modified"].isoformat(),
+                        }
+                    await asyncio.to_thread(
+                        save_manifest, cache_dir, file_url, ifd, manifest_store, saved_meta
+                    )
             self._remember_manifest(manifest_key, manifest_store, identity)
             if self._block_cache is not None:
                 # A new identity for this object drops blocks of its old version.

@@ -84,3 +84,30 @@ async def test_memory_manifest_hit_survives_head_when_unchanged(tmp_path):
     assert reader.stats["memory_manifest_hits"] == 1
     assert reader.stats["manifest_parses"] == 1
     assert reader.stats.get("manifest_stale", 0) == 0
+
+
+async def test_replacement_between_parse_and_head_is_detected(tmp_path, monkeypatch):
+    """The stored identity must predate the parse, so a swap during it reads as stale."""
+    import aef_loader.reader as reader_module
+
+    tile = write_cog(tmp_path, "s.tif")
+    old = pattern(2020)
+    new = (old + 1).astype("int8")
+    manifests = tmp_path / "manifests"
+    original_call = reader_module.VirtualTIFF.__call__
+
+    def parse_then_replace(self, *args, **kwargs):
+        manifest = original_call(self, *args, **kwargs)
+        write_cog(tmp_path, "s.tif", data=new, compress="none")
+        return manifest
+
+    monkeypatch.setattr(reader_module.VirtualTIFF, "__call__", parse_then_replace)
+    first = local_reader(tmp_path, manifest_cache_dir=manifests, manifest_validation="head")
+    await first.open_tiles_by_zone([tile], chunks="native")
+    monkeypatch.setattr(reader_module.VirtualTIFF, "__call__", original_call)
+
+    second = local_reader(tmp_path, manifest_cache_dir=manifests, manifest_validation="head")
+    result = await read_tile(second, tile)
+
+    assert second.stats["manifest_stale"] == 1
+    assert (result == new).all()
