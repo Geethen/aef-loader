@@ -33,6 +33,7 @@ try:
 except ImportError:  # Compatibility with older VirtualiZarr releases
     from virtualizarr.registry import ObjectStoreRegistry
 
+from aef_loader._limits import ReadLimitedStore, ReadStats
 from aef_loader.cache import load_cached_manifest, save_manifest
 from aef_loader.collection import AEF, Collection
 from aef_loader.constants import AEF_NODATA_VALUE, SOURCE_COOP_REGION
@@ -353,6 +354,7 @@ class VirtualTiffReader:
         manifest_cache_dir: str | Path | None = None,
         memory_manifest_cache_size: int = 128,
         collection: Collection = AEF,
+        max_read_concurrency: int | None = None,
     ):
         """
         Initialize the virtual TIFF reader.
@@ -371,8 +373,16 @@ class VirtualTiffReader:
             collection: Description of the COG collection being read (band
                 names, nodata sentinel, encoding). Defaults to AlphaEarth
                 Foundations.
+            max_read_concurrency: Maximum concurrent physical pixel reads across
+                all registered object stores, event loops, and threads. None
+                (the default) leaves stores unwrapped and preserves unbounded
+                read behavior.
         """
         self.collection = collection
+        if max_read_concurrency is not None and max_read_concurrency < 1:
+            raise ValueError("max_read_concurrency must be positive or None")
+        self.max_read_concurrency = max_read_concurrency
+        self._read_stats = ReadStats()
         self.gcp_project = gcp_project
         self.manifest_cache_dir = (
             Path(manifest_cache_dir) if manifest_cache_dir is not None else None
@@ -394,7 +404,7 @@ class VirtualTiffReader:
     @property
     def stats(self) -> dict[str, int | float]:
         """Snapshot of reader activity for repeatable performance measurements."""
-        return self._stats.copy()
+        return self._stats | self._read_stats.snapshot()
 
     def _remember_manifest(self, key: tuple[str, int], manifest_store) -> None:
         if self.memory_manifest_cache_size == 0:
@@ -438,11 +448,16 @@ class VirtualTiffReader:
         store_key = f"{protocol}://{bucket}"
         if store_key not in self._stores:
             if protocol == "gs":
-                self._stores[store_key] = self._get_gcs_store(bucket)
+                store = self._get_gcs_store(bucket)
             elif protocol == "s3":
-                self._stores[store_key] = self._get_s3_store(bucket)
+                store = self._get_s3_store(bucket)
             else:
                 raise ValueError(f"Unsupported protocol: {protocol}")
+            self._stores[store_key] = (
+                ReadLimitedStore(store, self.max_read_concurrency, self._read_stats)
+                if self.max_read_concurrency is not None
+                else store
+            )
         return self._stores[store_key]
 
     def _get_registry(self, protocol: PathProtocol, bucket: str):
