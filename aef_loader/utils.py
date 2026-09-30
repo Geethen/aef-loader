@@ -150,6 +150,7 @@ def dequantize_aef(
         )
         result.attrs["units"] = "embedding"
         result.attrs["dequantized"] = True
+        result.attrs["aef:encoding"] = "float"
         return set_aef_nodata(result, nodata=np.nan)
 
     # Plain ndarray: gather through the precomputed LUT (see _dequantize_lut).
@@ -208,6 +209,7 @@ def quantize_aef(
             attrs=data.attrs.copy(),
         )
         result.attrs["quantized"] = True
+        result.attrs["aef:encoding"] = "aef-sqrt"
         return set_aef_nodata(result, nodata=AEF_NODATA_VALUE)
 
     return quantized
@@ -318,19 +320,19 @@ def split_bands(ds: xr.Dataset, var: str = "embeddings") -> xr.Dataset:
 
 
 def _is_quantized(tree: DataTree) -> bool:
-    """True if any zone's data variables are an integer dtype (raw/quantized int8).
+    """True if any zone's embeddings hold raw codes (AEF int8, TESSERA codes).
 
-    Dequantized embeddings are float; raw AEF COGs opened by
-    ``VirtualTiffReader.open_tiles_by_zone`` are int8. Interpolating resamplers
-    must not run on the integer form (see ``reproject_datatree``).
+    Decided by the ``aef:encoding`` attr via ``is_raw_encoded``, so integer
+    quality variables alongside dequantized embeddings do not count, and codes
+    cast to float (``int8_to_float32``) still do. Interpolating resamplers must
+    not run on raw codes (see ``reproject_datatree``).
     """
+    from aef_loader.collection import is_raw_encoded
+
     for zone_name in tree.children:
         ds = tree[zone_name].ds
-        if ds is None:
-            continue
-        for var in ds.data_vars:
-            if np.issubdtype(ds[var].dtype, np.integer):
-                return True
+        if ds is not None and is_raw_encoded(ds):
+            return True
     return False
 
 
@@ -506,11 +508,12 @@ def reproject_datatree(
     # resampler operates on real embedding values with NaN-aware nodata.
     if resampling != "nearest" and not allow_lossy_resampling and _is_quantized(tree):
         raise ValueError(
-            f"resampling={resampling!r} would corrupt raw int8 (quantized) AEF "
-            "embeddings: it interpolates across the -128 nodata sentinel and the "
-            "nonlinear quantization curve. Dequantize first (dequantize_aef, "
-            "which maps -128 -> NaN) and reproject the float data, or pass "
-            "allow_lossy_resampling=True to override. 'nearest' is always safe."
+            f"resampling={resampling!r} would corrupt raw quantized embeddings: "
+            "it interpolates across the nodata sentinel and between codes that "
+            "are not linear in the embedding value. Dequantize first (AEF: "
+            "dequantize_aef; TESSERA: open_tessera(dequantize=True)) and "
+            "reproject the float data, or pass allow_lossy_resampling=True to "
+            "override. 'nearest' is always safe."
         )
 
     reproject_kwargs: dict = {"resampling": resampling}

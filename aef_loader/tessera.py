@@ -27,18 +27,13 @@ import numpy as np
 import xarray as xr
 from xarray import DataTree
 
+from aef_loader.collection import TESSERA
+
 TESSERA_V1_1_DCLIMATE_URL = (
     "https://data.source.coop/tessera/tessera/zarr/v1.1-dclimate"
 )
 
-_QUALITY_VARS = (
-    "s1_asc_obs_count",
-    "s1_desc_obs_count",
-    "s2_obs_count",
-    "s1_asc_month_covered",
-    "s1_desc_month_covered",
-    "s2_month_covered",
-)
+_QUALITY_VARS = TESSERA.quality_vars
 
 
 def _open_root(url: str):
@@ -149,7 +144,7 @@ def open_tessera(
         group_name = f"utm{zone:02d}"
         if group_name not in root:
             continue
-        crs = f"EPSG:326{zone:02d}"
+        crs = TESSERA.zone_crs(f"{zone}N")
         attrs = dict(root[group_name].attrs)
         a, _, c, _, e, f = attrs["spatial:transform"]
         nrows, ncols = attrs["spatial:shape"]
@@ -189,11 +184,9 @@ def open_tessera(
         keep = ["embeddings", "scales"] + (list(_QUALITY_VARS) if include_quality else [])
         ds = ds[[v for v in keep if v in ds.data_vars]]
 
+        ds = TESSERA.tag(ds)
         if dequantize:
-            finite = np.isfinite(ds["scales"])
-            emb = ds["embeddings"].astype("float32") * ds["scales"].where(finite)
-            emb.attrs["dequantized"] = True
-            ds = ds.drop_vars("scales").assign(embeddings=emb)
+            ds = TESSERA.dequantize(ds)
 
         ds = assign_crs(ds, crs)
         ds.attrs.update(utm_zone=f"{zone}N", source="TESSERA", source_url=url)
