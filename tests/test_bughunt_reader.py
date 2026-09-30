@@ -54,3 +54,33 @@ async def test_replaced_object_with_block_cache_only(tmp_path):
 
     write_cog(tmp_path, "s.tif", data=new, compress="none")
     assert (await read_tile(reader, tile) == new).all()
+
+
+async def test_memory_manifest_hit_is_validated_with_head(tmp_path):
+    tile = write_cog(tmp_path, "s.tif")
+    old = pattern(2020)
+    new = (old + 1).astype("int8")
+    reader = local_reader(
+        tmp_path,
+        manifest_cache_dir=tmp_path / "manifests",
+        manifest_validation="head",
+        block_cache_bytes=10**8,
+    )
+    assert (await read_tile(reader, tile) == old).all()
+
+    write_cog(tmp_path, "s.tif", data=new, compress="none")
+    result = await read_tile(reader, tile)
+
+    assert reader.stats["manifest_stale"] == 1
+    assert (result == new).all()
+
+
+async def test_memory_manifest_hit_survives_head_when_unchanged(tmp_path):
+    tile = write_cog(tmp_path, "s.tif")
+    reader = local_reader(tmp_path, manifest_validation="head")
+    await read_tile(reader, tile)
+    await read_tile(reader, tile)
+
+    assert reader.stats["memory_manifest_hits"] == 1
+    assert reader.stats["manifest_parses"] == 1
+    assert reader.stats.get("manifest_stale", 0) == 0

@@ -748,34 +748,49 @@ class VirtualTiffReader:
             # just falls through to a normal parse, so behaviour is unchanged when
             # no cache_dir is set or the cache is cold/corrupt.
             manifest_key = (file_url, ifd)
+            validate = self.manifest_validation == "head"
             identity: tuple | None = None
+            head_memo: list[dict | None] = []
+
+            async def head_once() -> dict | None:
+                """HEAD the object at most once per open; None if it fails."""
+                if not head_memo:
+                    try:
+                        head_memo.append(
+                            dict(await self._get_store(protocol, bucket).head_async(key))
+                        )
+                    except Exception as exc:
+                        logger.warning("could not validate manifest for %s: %s", file_url, exc)
+                        head_memo.append(None)
+                return head_memo[0]
+
+            def is_current(known: tuple | None, head_meta: dict | None) -> bool:
+                current = self._object_identity(head_meta)
+                return known is not None and current is not None and known == current
+
             manifest_store = self._manifest_cache.get(manifest_key)
+            memory_stale = False
             if manifest_store is not None:
-                self._manifest_cache.move_to_end(manifest_key)
-                self._stats["memory_manifest_hits"] += 1
                 identity = self._manifest_identity.get(manifest_key)
-            elif cache_dir is not None:
+                if validate and not is_current(identity, await head_once()):
+                    logger.info("in-memory manifest %s stale: ETag or size mismatch", file_url)
+                    self._discard_stale(file_url, manifest_key)
+                    manifest_store = None
+                    memory_stale = True  # the disk copy is at best as new: skip it
+                else:
+                    self._manifest_cache.move_to_end(manifest_key)
+                    self._stats["memory_manifest_hits"] += 1
+            if manifest_store is None and cache_dir is not None and not memory_stale:
                 manifest_store, cached_meta = await asyncio.to_thread(
                     load_cached_manifest, cache_dir, file_url, ifd, registry
                 )
                 if manifest_store is not None:
                     identity = self._object_identity(cached_meta)
-                    if self.manifest_validation == "head":
-                        store_obj = self._get_store(protocol, bucket)
-                        try:
-                            head_meta = await store_obj.head_async(key)
-                            if (
-                                cached_meta is None or
-                                cached_meta.get("e_tag") != head_meta.get("e_tag") or
-                                cached_meta.get("size") != head_meta.get("size")
-                            ):
-                                logger.info("manifest cache %s stale: ETag or size mismatch", file_url)
-                                self._discard_stale(file_url, manifest_key)
-                                manifest_store = None
-                        except Exception as exc:
-                            logger.warning("could not validate manifest for %s: %s", file_url, exc)
-                            manifest_store = None
-                    if manifest_store is not None:
+                    if validate and not is_current(identity, await head_once()):
+                        logger.info("manifest cache %s stale: ETag or size mismatch", file_url)
+                        self._discard_stale(file_url, manifest_key)
+                        manifest_store = None
+                    else:
                         self._stats["disk_manifest_hits"] += 1
             if manifest_store is None:
                 manifest_store = await asyncio.to_thread(
@@ -787,7 +802,7 @@ class VirtualTiffReader:
                 # go through the reader's (possibly caching) registry.
                 manifest_store._registry = registry
                 self._stats["manifest_parses"] += 1
-                if cache_dir is not None or self._block_cache is not None:
+                if validate or cache_dir is not None or self._block_cache is not None:
                     store_obj = self._get_store(protocol, bucket)
                     head_meta = None
                     try:
