@@ -7,7 +7,7 @@ Publish ONE pre-built virtual dataset per (UTM zone, year) covering all AlphaEar
 - **Tiles in Index:** ~302,000
 - **Chunk References per Tile:** 8x8 blocks $\times$ 64 bands = 4096 refs
 - **Total References:** ~1.23 billion globally.
-- **Per Zone/Year:** ~5,000 tiles per zone/year $\rightarrow$ ~20 million chunk references.
+- **Per Zone/Year:** measured from the live index: 1,080 (zone, year) partitions, median 192 tiles (max 725) $\rightarrow$ ~0.8 M chunk references per partition (max ~3 M).
 
 ## VirtualiZarr Serialisation Options
 
@@ -60,4 +60,4 @@ class VirtualCollectionReader:
 ```
 
 ## Recommendation
-**Use Kerchunk Parquet** partitioned by (UTM zone, year). It requires minimal infrastructure (no database, just static files on S3) and provides massive compression over JSON for our 20M refs per zone. Effort is medium (batch script to run `to_kerchunk` once).
+**Use Kerchunk Parquet** partitioned by (UTM zone, year). It is a set of static files on object storage and compresses far better than JSON for ~0.8 M refs per partition (max ~3 M). Note that Icechunk also needs no database or server — it is likewise just files on object storage; the reasons to prefer Kerchunk Parquet here are fewer dependencies and simpler read-only consumption, while Icechunk would win if transactional updates/versioning become important. Effort is medium (batch script to run `to_kerchunk` once).

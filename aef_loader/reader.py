@@ -377,6 +377,10 @@ class VirtualTiffReader:
         """
         self.collection = collection
         self.gcp_project = gcp_project
+        if manifest_validation not in ("none", "head"):
+            raise ValueError(
+                f"manifest_validation must be 'none' or 'head', got {manifest_validation!r}"
+            )
         self.manifest_validation = manifest_validation
         self.manifest_cache_dir = (
             Path(manifest_cache_dir) if manifest_cache_dir is not None else None
