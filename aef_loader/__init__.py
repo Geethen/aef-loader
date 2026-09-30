@@ -11,6 +11,8 @@ The primary access pattern is loading tiles by UTM zone using VirtualTiffReader.
 For combining data across zones, use reproject_datatree() from the utils module.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from aef_loader.constants import DataSource
 from aef_loader.index import AEFIndex
 from aef_loader.reader import VirtualTiffReader
@@ -46,4 +48,7 @@ __all__ = [
     "split_bands",
 ]
 
-__version__ = "0.1.0"
+try:
+    __version__ = version("aef-loader-plus")
+except PackageNotFoundError:  # not installed (e.g. run from a source tree)
+    __version__ = "0+unknown"

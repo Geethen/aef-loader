@@ -21,10 +21,8 @@ dependencies = [
     "obstore>=0.4.0",
     "obspec-utils",
     "numpy>=1.24.0",
-    "geopandas>=0.14.0",
     "xarray>=2024.1.0",
     "zarr>=3.0.0",
-    "shapely>=2.0.2",
     "affine>=2.4.0",
     "odc-geo>=0.4.10",
     "pyarrow>=23.0.1",
@@ -34,6 +32,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+exact = [
+    "geopandas>=0.14.0",
+    "shapely>=2.0.2",
+]
 benchmark = [
     "geedim",
     "earthengine-api",
@@ -43,6 +45,8 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "ruff",
+    "geopandas>=0.14.0",
+    "shapely>=2.0.2",
 ]
 
 [project.urls]

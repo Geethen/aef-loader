@@ -24,7 +24,8 @@ Details and measurements: [docs/CHANGES.md](docs/CHANGES.md),
 
 ## Installation
 
-Requires Python 3.12+.
+Requires Python 3.12+. For `search(..., exact=True)` (true footprint intersection) install the
+`exact` extra (geopandas and shapely): `pip install "aef-loader-plus[exact] @ git+https://github.com/Geethen/aef_loader_plus.git"`.
 
 ```bash
 pip install git+https://github.com/Geethen/aef_loader_plus.git

@@ -62,6 +62,18 @@ _OPTIONAL_COLUMNS = (
 )
 
 
+def _import_shapely():
+    """Import shapely for ``exact=True``, with an actionable error if missing."""
+    try:
+        import shapely
+    except ImportError as exc:
+        raise ImportError(
+            "exact=True requires shapely; install it with "
+            'pip install "aef-loader-plus[exact]"'
+        ) from exc
+    return shapely
+
+
 def _default_cache_dir() -> Path:
     """Per-user cache directory (platformdirs if installed, else ``~/.cache``)."""
     try:
@@ -167,7 +179,7 @@ class AEFIndex:
     The index contains metadata about all AEF tiles including their
     bounding boxes and paths. It is loaded as a plain pandas DataFrame and
     filtered by WGS84 bbox overlap; ``exact=True`` refines with the true
-    footprint geometry (requires geopandas/shapely).
+    footprint geometry (requires shapely: ``pip install "aef-loader-plus[exact]"``).
 
     Supports both GCS (Google Cloud Storage) and Source Cooperative (AWS S3) backends.
 
@@ -354,7 +366,7 @@ class AEFIndex:
         """Footprint geometries in index row order, fetched once and cached on disk."""
         if self._geoms is not None:
             return self._geoms
-        import shapely
+        shapely = _import_shapely()
 
         df = self._df
         if df is not None and "geometry" in df.columns:  # e.g. an assigned GeoDataFrame
@@ -484,7 +496,7 @@ class AEFIndex:
         positions = np.flatnonzero(keep)  # ascending == file row order
 
         if exact and bbox and len(positions):
-            import shapely
+            shapely = _import_shapely()
 
             geoms = self._load_geoms()
             hit = shapely.intersects(

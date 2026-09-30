@@ -253,3 +253,40 @@ def test_unknown_source_string_raises():
 def test_cache_dir_accepts_str_and_path(tmp_path):
     assert AEFIndex(cache_dir=str(tmp_path)).cache_dir == tmp_path
     assert AEFIndex(cache_dir=tmp_path).cache_dir == tmp_path
+
+
+def test_exact_without_shapely_raises_helpful_importerror(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "shapely" or name.startswith("shapely."):
+            raise ImportError("no shapely")
+        return real_import(name, *args, **kwargs)
+
+    df, _ = _records(5)
+    index = AEFIndex(source=DataSource.SOURCE_COOP)
+    index._df = df
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    with pytest.raises(ImportError, match=r"aef-loader-plus\[exact\]"):
+        index.search(bbox=(0, 0, 3, 3), exact=True)
+
+
+def test_version_comes_from_metadata_with_fallback(monkeypatch):
+    import importlib
+    import importlib.metadata as md
+
+    import aef_loader
+
+    assert aef_loader.__version__ == md.version("aef-loader-plus")
+
+    def missing(name):
+        raise md.PackageNotFoundError(name)
+
+    monkeypatch.setattr(md, "version", missing)
+    try:
+        assert importlib.reload(aef_loader).__version__ == "0+unknown"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(aef_loader)

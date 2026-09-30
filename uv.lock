@@ -17,7 +17,6 @@ source = { editable = "." }
 dependencies = [
     { name = "affine" },
     { name = "dask" },
-    { name = "geopandas" },
     { name = "numpy" },
     { name = "obspec-utils" },
     { name = "obstore" },
@@ -25,7 +24,6 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pyproj" },
     { name = "rasterio" },
-    { name = "shapely" },
     { name = "virtual-tiff" },
     { name = "virtualizarr" },
     { name = "xarray" },
@@ -39,9 +37,15 @@ benchmark = [
     { name = "matplotlib" },
 ]
 dev = [
+    { name = "geopandas" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
+    { name = "shapely" },
+]
+exact = [
+    { name = "geopandas" },
+    { name = "shapely" },
 ]
 
 [package.metadata]
@@ -50,7 +54,8 @@ requires-dist = [
     { name = "dask", specifier = ">=2024.1.0" },
     { name = "earthengine-api", marker = "extra == 'benchmark'" },
     { name = "geedim", marker = "extra == 'benchmark'" },
-    { name = "geopandas", specifier = ">=0.14.0" },
+    { name = "geopandas", marker = "extra == 'dev'", specifier = ">=0.14.0" },
+    { name = "geopandas", marker = "extra == 'exact'", specifier = ">=0.14.0" },
     { name = "matplotlib", marker = "extra == 'benchmark'" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "obspec-utils" },
@@ -62,13 +67,14 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "rasterio", specifier = ">=1.4.4" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "shapely", specifier = ">=2.0.2" },
+    { name = "shapely", marker = "extra == 'dev'", specifier = ">=2.0.2" },
+    { name = "shapely", marker = "extra == 'exact'", specifier = ">=2.0.2" },
     { name = "virtual-tiff", specifier = ">=0.5.0" },
     { name = "virtualizarr", specifier = ">=2.0.0" },
     { name = "xarray", specifier = ">=2024.1.0" },
     { name = "zarr", specifier = ">=3.0.0" },
 ]
-provides-extras = ["benchmark", "dev"]
+provides-extras = ["exact", "benchmark", "dev"]
 
 [[package]]
 name = "affine"
