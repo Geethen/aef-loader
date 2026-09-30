@@ -33,7 +33,7 @@ try:
 except ImportError:  # Compatibility with older VirtualiZarr releases
     from virtualizarr.registry import ObjectStoreRegistry
 
-from aef_loader._limits import ReadLimitedStore, ReadStats
+from aef_loader._limits import ReadLimitedStore, ReadLimiter, ReadStats
 from aef_loader.blockcache import BlockCache, CachingStore
 from aef_loader.cache import load_cached_manifest, save_manifest
 from aef_loader.collection import AEF, Collection
@@ -393,6 +393,10 @@ class VirtualTiffReader:
             raise ValueError("max_read_concurrency must be positive or None")
         self.max_read_concurrency = max_read_concurrency
         self._read_stats = ReadStats()
+        # One limiter for every store, so the cap is reader-wide, not per bucket.
+        self._read_limiter = (
+            ReadLimiter(max_read_concurrency) if max_read_concurrency is not None else None
+        )
         self.gcp_project = gcp_project
         if manifest_validation not in ("none", "head"):
             raise ValueError(
@@ -481,8 +485,8 @@ class VirtualTiffReader:
                 raise ValueError(f"Unsupported protocol: {protocol}")
             # Limiter innermost, cache outermost: a cache hit never waits for a
             # read slot or counts as a physical read.
-            if self.max_read_concurrency is not None:
-                store = ReadLimitedStore(store, self.max_read_concurrency, self._read_stats)
+            if self._read_limiter is not None:
+                store = ReadLimitedStore(store, self._read_limiter, self._read_stats)
             self._stores[store_key] = self._with_block_cache(store, store_key)
         return self._stores[store_key]
 

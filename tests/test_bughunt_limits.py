@@ -79,3 +79,35 @@ def test_permit_released_when_waiter_cancelled_after_grant():
         assert store._limiter.try_acquire()
 
     asyncio.run(main())
+
+
+def test_read_limit_is_shared_across_buckets(monkeypatch):
+    from aef_loader.reader import VirtualTiffReader
+
+    lock = threading.Lock()
+    state = {"active": 0, "peak": 0}
+
+    class Fake:
+        async def get_range_async(self, path, *, start, end=None, length=None):
+            with lock:
+                state["active"] += 1
+                state["peak"] = max(state["peak"], state["active"])
+            try:
+                await asyncio.sleep(0.02)
+                return b"x" * 7
+            finally:
+                with lock:
+                    state["active"] -= 1
+
+    reader = VirtualTiffReader(max_read_concurrency=2)
+    monkeypatch.setattr(reader, "_get_s3_store", lambda bucket: Fake())
+    stores = [reader._get_store("s3", "bucket-a"), reader._get_store("s3", "bucket-b")]
+
+    async def reads():
+        await asyncio.gather(
+            *(stores[i % 2].get_range_async("k", start=0, end=7) for i in range(20))
+        )
+
+    asyncio.run(reads())
+    assert state["peak"] <= 2
+    assert reader.stats["read_requests"] == 20

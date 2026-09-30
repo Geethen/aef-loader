@@ -177,14 +177,20 @@ class ReadLimitedStore:
     """
 
     def __init__(
-        self, store: Any, max_concurrency: int | None, stats: ReadStats
+        self,
+        store: Any,
+        max_concurrency: int | ReadLimiter | None,
+        stats: ReadStats,
     ) -> None:
-        if max_concurrency is not None and max_concurrency < 1:
+        """Wrap ``store``; pass one shared ``ReadLimiter`` to limit several stores together."""
+        if max_concurrency is None or isinstance(max_concurrency, ReadLimiter):
+            limiter = max_concurrency
+        elif max_concurrency < 1:
             raise ValueError("max_read_concurrency must be positive or None")
+        else:
+            limiter = ReadLimiter(max_concurrency)
         self._store = store
-        self._limiter = (
-            ReadLimiter(max_concurrency) if max_concurrency is not None else None
-        )
+        self._limiter = limiter
         self._stats = stats
 
     @property
