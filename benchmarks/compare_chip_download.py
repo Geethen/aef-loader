@@ -201,6 +201,9 @@ def patch_obstore():
         _OBSTORE_REQS += 1
         _OBSTORE_BYTES += size
 
+    # Whole-object get(): the body is streamed lazily, so record the object's
+    # size as an upper bound. The AEF read path uses get_range(s); get() only
+    # appears for small objects such as the index.
     def my_get(*args, **kwargs):
         res = orig_get(*args, **kwargs)
         _record(res.meta["size"])
