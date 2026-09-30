@@ -234,3 +234,44 @@ def test_zone_processing_obeys_shared_concurrency_limit(monkeypatch):
     assert peak == 2
     assert reader.stats["open_calls"] == 1
     assert reader.stats["last_open_wall_seconds"] > 0
+
+
+def _zone_tiles(zones):
+    return [
+        AEFTileInfo(
+            id=zone,
+            path=f"s3://bucket/{zone}.tif",
+            year=2024,
+            bbox=(0, 0, 1, 1),
+            crs_epsg=32632,
+            utm_zone=zone,
+        )
+        for zone in zones
+    ]
+
+
+def test_empty_crop_is_detected():
+    ds, geobox = _crop_fixture()
+    outside = _crop_to_bbox(ds, geobox, (500, 500, 600, 600), "EPSG:32632", 0)
+    assert reader_module._is_empty_crop(outside)
+    assert not reader_module._is_empty_crop(ds)
+
+
+def test_zones_with_no_overlap_are_dropped_and_all_empty_raises(monkeypatch):
+    async def fake_combine(self, tiles, ifd=0, **kwargs):
+        if tiles[0].utm_zone == "2N":
+            return None  # every tile in this zone had an empty crop
+        return xr.Dataset({"v": ("x", np.array([1], dtype=np.int8))})
+
+    reader = VirtualTiffReader()
+    reader._combine_tiles_single_zone = MethodType(fake_combine, reader)
+    monkeypatch.setattr(reader_module, "assign_crs", lambda ds, crs: ds)
+
+    tree = asyncio.run(reader.open_tiles_by_zone(_zone_tiles(["1N", "2N"])))
+    assert list(tree.children) == ["1N"]
+    assert tree.attrs["zones"] == ["1N"]
+
+    with pytest.raises(ValueError, match=r"bbox .*EPSG:4326"):
+        asyncio.run(
+            reader.open_tiles_by_zone(_zone_tiles(["2N"]), bbox=(1, 2, 3, 4))
+        )

@@ -242,6 +242,11 @@ def _resolve_chunks(manifest_store, chunks: ChunkSpec):
     return resolved
 
 
+def _is_empty_crop(ds: xr.Dataset) -> bool:
+    """True when a cropped dataset has zero extent along x or y."""
+    return ds.sizes.get("x", 1) == 0 or ds.sizes.get("y", 1) == 0
+
+
 def _crop_to_bbox(
     ds: xr.Dataset,
     geobox: GeoBox,
@@ -514,7 +519,7 @@ class VirtualTiffReader:
 
         async def process_zone(
             zone: str, zone_tiles: list[AEFTileInfo]
-        ) -> tuple[str, xr.Dataset]:
+        ) -> tuple[str, xr.Dataset | None]:
             logger.info(f"Processing zone {zone}: {len(zone_tiles)} tiles")
 
             ds = await self._combine_tiles_single_zone(
@@ -526,6 +531,9 @@ class VirtualTiffReader:
                 buffer_pixels=buffer_pixels,
                 semaphore=semaphore,
             )
+            if ds is None:
+                logger.info(f"Zone {zone}: AOI does not overlap any tile, skipping")
+                return zone, None
 
             # Add CRS metadata using odc-geo
             crs = f"EPSG:{zone_tiles[0].crs_epsg}"
@@ -545,7 +553,12 @@ class VirtualTiffReader:
                 for zone, zone_tiles in tiles_by_zone.items()
             ]
         )
-        zone_datasets = dict(zone_results)
+        zone_datasets = {zone: ds for zone, ds in zone_results if ds is not None}
+        if not zone_datasets:
+            raise ValueError(
+                f"bbox {bbox} (bbox_crs={bbox_crs!r}) does not overlap any of the "
+                f"{len(tiles)} tiles"
+            )
 
         # Build DataTree
         tree_dict = {f"/{zone}": ds for zone, ds in zone_datasets.items()}
@@ -568,11 +581,12 @@ class VirtualTiffReader:
         bbox_crs: str = "EPSG:4326",
         buffer_pixels: int = 0,
         semaphore: asyncio.Semaphore | None = None,
-    ) -> xr.Dataset:
+    ) -> xr.Dataset | None:
         """
         Combine tiles within a single UTM zone.
 
-        All tiles must be in the same CRS. Combines spatially and temporally,
+        Tiles whose crop to ``bbox`` is empty are skipped; returns None when every
+        tile in the zone is empty. All tiles must be in the same CRS. Combines spatially and temporally,
         keeping bands as a single 'embeddings' variable with a band dimension.
         Sets both ``nodata`` and ``_FillValue`` to ``-128`` on the output via
         ``set_aef_nodata``.
@@ -581,13 +595,13 @@ class VirtualTiffReader:
 
         cache_dir = self.manifest_cache_dir
 
-        async def process_tile(tile: AEFTileInfo) -> xr.Dataset:
+        async def process_tile(tile: AEFTileInfo) -> xr.Dataset | None:
             if semaphore is not None:
                 async with semaphore:
                     return await process_tile_unlocked(tile)
             return await process_tile_unlocked(tile)
 
-        async def process_tile_unlocked(tile: AEFTileInfo) -> xr.Dataset:
+        async def process_tile_unlocked(tile: AEFTileInfo) -> xr.Dataset | None:
             started = perf_counter()
             protocol, bucket, key = _parse_cloud_path(tile.path)
             file_url = f"{protocol}://{bucket}/{key}"
@@ -649,6 +663,8 @@ class VirtualTiffReader:
             ds = ds.assign_coords(x=coords["x"].values, y=coords["y"].values)
             if bbox is not None:
                 ds = _crop_to_bbox(ds, geobox, bbox, bbox_crs, buffer_pixels)
+                if _is_empty_crop(ds):
+                    return None  # AOI does not overlap this tile
 
             # Expand time as a dimension. This is free on dask-backed arrays (a
             # graph-only op) but forces a full materialising read on numpy-backed
@@ -664,7 +680,13 @@ class VirtualTiffReader:
 
             return ds
 
-        datasets = await asyncio.gather(*[process_tile(tile) for tile in tiles])
+        datasets = [
+            ds
+            for ds in await asyncio.gather(*[process_tile(tile) for tile in tiles])
+            if ds is not None
+        ]
+        if not datasets:
+            return None
 
         # Group by time
         datasets_by_time: dict[dt.datetime, list[xr.Dataset]] = defaultdict(list)
