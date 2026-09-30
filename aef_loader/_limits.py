@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from collections import deque
 from collections.abc import Callable
 from typing import Any
 
@@ -64,25 +65,132 @@ def _byte_length(value: Any) -> int:
     return 0
 
 
+class _Waiter:
+    """One blocked acquirer: an asyncio future or a thread event."""
+
+    __slots__ = ("event", "future", "granted", "loop")
+
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop | None = None,
+        future: asyncio.Future[None] | None = None,
+        event: threading.Event | None = None,
+    ) -> None:
+        self.loop = loop
+        self.future = future
+        self.event = event
+        self.granted = False
+
+
+def _grant(future: asyncio.Future[None]) -> None:
+    if not future.done():
+        future.set_result(None)
+
+
+class ReadLimiter:
+    """Counting limiter shared by threads and any number of event loops.
+
+    Waiters queue in FIFO order and a released permit is handed straight to the
+    next one (no executor threads sit blocked on a semaphore). A permit granted to
+    a waiter that was abandoned in the meantime (task cancelled, loop closed) is
+    passed on rather than lost.
+    """
+
+    def __init__(self, max_concurrency: int) -> None:
+        if max_concurrency < 1:
+            raise ValueError("max_read_concurrency must be positive or None")
+        self.max_concurrency = max_concurrency
+        self._lock = threading.Lock()
+        self._available = max_concurrency
+        self._waiters: deque[_Waiter] = deque()
+
+    def try_acquire(self) -> bool:
+        with self._lock:
+            if self._available > 0 and not self._waiters:
+                self._available -= 1
+                return True
+            return False
+
+    async def acquire(self) -> None:
+        loop = asyncio.get_running_loop()
+        with self._lock:
+            if self._available > 0 and not self._waiters:
+                self._available -= 1
+                return
+            waiter = _Waiter(loop=loop, future=loop.create_future())
+            self._waiters.append(waiter)
+        try:
+            await waiter.future
+        except BaseException:
+            self._abandon(waiter)
+            raise
+
+    def acquire_sync(self) -> None:
+        with self._lock:
+            if self._available > 0 and not self._waiters:
+                self._available -= 1
+                return
+            waiter = _Waiter(event=threading.Event())
+            self._waiters.append(waiter)
+        try:
+            waiter.event.wait()
+        except BaseException:
+            self._abandon(waiter)
+            raise
+
+    def _abandon(self, waiter: _Waiter) -> None:
+        """Undo a waiter that will never use its permit."""
+        with self._lock:
+            granted = waiter.granted
+            if not granted:
+                try:
+                    self._waiters.remove(waiter)
+                except ValueError:
+                    pass
+        if granted:
+            self.release()
+
+    def release(self) -> None:
+        with self._lock:
+            while self._waiters:
+                waiter = self._waiters.popleft()
+                waiter.granted = True
+                if waiter.event is not None:
+                    waiter.event.set()
+                    return
+                try:
+                    waiter.loop.call_soon_threadsafe(_grant, waiter.future)
+                    return
+                except RuntimeError:  # its loop is closed: offer it to the next
+                    continue
+            if self._available >= self.max_concurrency:
+                raise ValueError("ReadLimiter released too many times")
+            self._available += 1
+
+
 class ReadLimitedStore:
     """Delegate an object store while globally limiting physical read calls.
 
-    ``threading.BoundedSemaphore`` is deliberately used instead of an
-    ``asyncio.Semaphore``: Zarr's I/O may run on several event loops in Dask
-    worker threads, while an asyncio semaphore belongs to exactly one loop.
+    A :class:`ReadLimiter` is used instead of an ``asyncio.Semaphore``: Zarr's I/O
+    may run on several event loops in Dask worker threads, while an asyncio
+    semaphore belongs to exactly one loop.
     """
 
     def __init__(
-        self, store: Any, max_concurrency: int | None, stats: ReadStats
+        self,
+        store: Any,
+        max_concurrency: int | ReadLimiter | None,
+        stats: ReadStats,
     ) -> None:
-        if max_concurrency is not None and max_concurrency < 1:
+        """Wrap ``store``; pass one shared ``ReadLimiter`` to limit several stores together."""
+        if max_concurrency is None or isinstance(max_concurrency, ReadLimiter):
+            limiter = max_concurrency
+        elif max_concurrency < 1:
             raise ValueError("max_read_concurrency must be positive or None")
+        else:
+            limiter = ReadLimiter(max_concurrency)
         self._store = store
-        self._semaphore = (
-            threading.BoundedSemaphore(max_concurrency)
-            if max_concurrency is not None
-            else None
-        )
+        self._limiter = limiter
         self._stats = stats
 
     @property
@@ -94,28 +202,9 @@ class ReadLimitedStore:
         """Expose the complete underlying obstore surface unchanged."""
         return getattr(self._store, name)
 
-    async def _acquire_async(self) -> None:
-        if self._semaphore is None:
-            return
-        acquire_task = asyncio.create_task(asyncio.to_thread(self._semaphore.acquire))
-        try:
-            await asyncio.shield(acquire_task)
-        except BaseException:
-            # A cancelled waiter can still acquire in the executor. Return that
-            # permit when it does, rather than leaking capacity permanently.
-            acquire_task.add_done_callback(self._release_if_acquired)
-            raise
-
-    def _release_if_acquired(self, task: asyncio.Task[bool]) -> None:
-        try:
-            task.result()
-        except BaseException:
-            return
-        assert self._semaphore is not None
-        self._semaphore.release()
-
     async def _call_async(self, method: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-        await self._acquire_async()
+        if self._limiter is not None:
+            await self._limiter.acquire()
         self._stats.started()
         try:
             result = await method(*args, **kwargs)
@@ -126,12 +215,12 @@ class ReadLimitedStore:
             self._stats.finished(result)
             return result
         finally:
-            if self._semaphore is not None:
-                self._semaphore.release()
+            if self._limiter is not None:
+                self._limiter.release()
 
     def _call_sync(self, method: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-        if self._semaphore is not None:
-            self._semaphore.acquire()
+        if self._limiter is not None:
+            self._limiter.acquire_sync()
         self._stats.started()
         try:
             result = method(*args, **kwargs)
@@ -142,8 +231,8 @@ class ReadLimitedStore:
             self._stats.finished(result)
             return result
         finally:
-            if self._semaphore is not None:
-                self._semaphore.release()
+            if self._limiter is not None:
+                self._limiter.release()
 
     async def get_range_async(self, *args: Any, **kwargs: Any) -> Any:
         return await self._call_async(self._store.get_range_async, *args, **kwargs)

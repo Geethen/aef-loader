@@ -20,7 +20,12 @@ from collections import OrderedDict
 
 
 class BlockCache:
-    """Thread-safe LRU of ``(url, start, end) -> bytes`` bounded by total bytes.
+    """Thread-safe LRU of ``(url, start, end, identity) -> bytes`` bounded by total bytes.
+
+    ``identity`` is the object's known version (ETag and size), so bytes read from
+    one version of an object are never served for another. The reader records it
+    with :meth:`set_identity`; keys are opaque to the cache except that the first
+    element is the URL, which :meth:`evict_url` uses.
 
     zarr runs its I/O on its own event-loop thread while dask workers and the
     caller's thread read the statistics, so every access is under a lock. An entry
@@ -31,14 +36,15 @@ class BlockCache:
         if max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
         self.max_bytes = int(max_bytes)
-        self._items: OrderedDict[tuple[str, int, int], bytes] = OrderedDict()
+        self._items: OrderedDict[tuple, bytes] = OrderedDict()
+        self._identities: dict[str, object] = {}
         self._lock = threading.Lock()
         self._bytes = 0
         self._hits = 0
         self._misses = 0
         self._evictions = 0
 
-    def get(self, key: tuple[str, int, int]) -> bytes | None:
+    def get(self, key: tuple) -> bytes | None:
         with self._lock:
             value = self._items.get(key)
             if value is None:
@@ -48,7 +54,7 @@ class BlockCache:
             self._hits += 1
             return value
 
-    def put(self, key: tuple[str, int, int], value: bytes) -> None:
+    def put(self, key: tuple, value: bytes) -> None:
         size = len(value)
         if size > self.max_bytes:
             return
@@ -66,7 +72,32 @@ class BlockCache:
     def clear(self) -> None:
         with self._lock:
             self._items.clear()
+            self._identities.clear()
             self._bytes = 0
+
+    def _evict_url_locked(self, url: str) -> int:
+        doomed = [key for key in self._items if key[0] == url]
+        for key in doomed:
+            self._bytes -= len(self._items.pop(key))
+        self._evictions += len(doomed)
+        return len(doomed)
+
+    def evict_url(self, url: str) -> int:
+        """Drop every cached block of ``url``; return how many were removed."""
+        with self._lock:
+            return self._evict_url_locked(url)
+
+    def identity(self, url: str) -> object:
+        """The identity recorded for ``url`` (None when unknown)."""
+        with self._lock:
+            return self._identities.get(url)
+
+    def set_identity(self, url: str, identity: object) -> None:
+        """Record ``url``'s current identity; drop its blocks if that changed."""
+        with self._lock:
+            if self._identities.get(url) != identity:
+                self._evict_url_locked(url)
+                self._identities[url] = identity
 
     @property
     def stats(self) -> dict[str, int]:
@@ -87,7 +118,8 @@ class CachingStore:
     attribute (``prefix``, ``url``, ``get_ranges``, ...) is delegated unchanged,
     so the wrapper is a drop-in for the registry and for the TIFF header parser.
     ``base_url`` (e.g. ``s3://bucket``) keys entries so that one cache can serve
-    several buckets.
+    several buckets. Entries are also keyed by the object identity the cache knows
+    for that URL, so a replaced object never hits blocks of its previous version.
     """
 
     def __init__(self, store, cache: BlockCache, base_url: str):
@@ -103,7 +135,8 @@ class CachingStore:
             end = start + length
         if end is None:
             return None
-        return (f"{self._base_url}/{path}", int(start), int(end))
+        url = f"{self._base_url}/{path}"
+        return (url, int(start), int(end), self._cache.identity(url))
 
     async def get_range_async(self, path, start, end=None, length=None):
         key = self._key(path, start, end, length)

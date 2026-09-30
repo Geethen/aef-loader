@@ -33,7 +33,7 @@ try:
 except ImportError:  # Compatibility with older VirtualiZarr releases
     from virtualizarr.registry import ObjectStoreRegistry
 
-from aef_loader._limits import ReadLimitedStore, ReadStats
+from aef_loader._limits import ReadLimitedStore, ReadLimiter, ReadStats
 from aef_loader.blockcache import BlockCache, CachingStore
 from aef_loader.cache import load_cached_manifest, save_manifest
 from aef_loader.collection import AEF, Collection
@@ -393,6 +393,10 @@ class VirtualTiffReader:
             raise ValueError("max_read_concurrency must be positive or None")
         self.max_read_concurrency = max_read_concurrency
         self._read_stats = ReadStats()
+        # One limiter for every store, so the cap is reader-wide, not per bucket.
+        self._read_limiter = (
+            ReadLimiter(max_read_concurrency) if max_read_concurrency is not None else None
+        )
         self.gcp_project = gcp_project
         if manifest_validation not in ("none", "head"):
             raise ValueError(
@@ -406,9 +410,13 @@ class VirtualTiffReader:
             BlockCache(block_cache_bytes) if block_cache_bytes else None
         )
         self._stores: dict[str, object] = {}  # Cache stores by (protocol, bucket)
+        self._limited_stores: dict[str, object] = {}  # Same stores without the block cache
         self._registry = None
+        self._parse_registry = None
         self.memory_manifest_cache_size = max(0, memory_manifest_cache_size)
         self._manifest_cache: OrderedDict[tuple[str, int], object] = OrderedDict()
+        # (ETag, size) each remembered manifest was built from, when known.
+        self._manifest_identity: dict[tuple[str, int], tuple | None] = {}
         self._stats: dict[str, int | float] = {
             "open_calls": 0,
             "tiles_opened": 0,
@@ -430,21 +438,43 @@ class VirtualTiffReader:
             stats.update(self._read_stats.snapshot())
         return stats
 
-    def _remember_manifest(self, key: tuple[str, int], manifest_store) -> None:
+    def _remember_manifest(
+        self, key: tuple[str, int], manifest_store, identity: tuple | None = None
+    ) -> None:
         if self.memory_manifest_cache_size == 0:
             return
         self._manifest_cache[key] = manifest_store
+        self._manifest_identity[key] = identity
         self._manifest_cache.move_to_end(key)
         while len(self._manifest_cache) > self.memory_manifest_cache_size:
-            self._manifest_cache.popitem(last=False)
+            evicted, _ = self._manifest_cache.popitem(last=False)
+            self._manifest_identity.pop(evicted, None)
+
+    @staticmethod
+    def _object_identity(meta) -> tuple | None:
+        """Version of an object from its head/cached metadata: ``(e_tag, size)``."""
+        if not meta:
+            return None
+        return (meta.get("e_tag"), meta.get("size"))
+
+    def _discard_stale(self, file_url: str, manifest_key: tuple[str, int]) -> None:
+        """Forget everything derived from an object that has been replaced."""
+        self._stats["manifest_stale"] = self._stats.get("manifest_stale", 0) + 1
+        self._manifest_cache.pop(manifest_key, None)
+        self._manifest_identity.pop(manifest_key, None)
+        if self._block_cache is not None:
+            self._block_cache.evict_url(file_url)
 
     async def __aenter__(self) -> VirtualTiffReader:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self._stores.clear()
+        self._limited_stores.clear()
         self._registry = None
+        self._parse_registry = None
         self._manifest_cache.clear()
+        self._manifest_identity.clear()
         if self._block_cache is not None:
             self._block_cache.clear()
 
@@ -469,20 +499,28 @@ class VirtualTiffReader:
             skip_signature=True,  # Source Coop is public, no auth needed
         )
 
-    def _get_store(self, protocol: PathProtocol, bucket: str):
-        """Get or create an obstore for a bucket based on protocol."""
+    def _get_limited_store(self, protocol: PathProtocol, bucket: str):
+        """The bucket's store behind the read limiter (if any) but without the block cache."""
         store_key = f"{protocol}://{bucket}"
-        if store_key not in self._stores:
+        if store_key not in self._limited_stores:
             if protocol == "gs":
                 store = self._get_gcs_store(bucket)
             elif protocol == "s3":
                 store = self._get_s3_store(bucket)
             else:
                 raise ValueError(f"Unsupported protocol: {protocol}")
+            if self._read_limiter is not None:
+                store = ReadLimitedStore(store, self._read_limiter, self._read_stats)
+            self._limited_stores[store_key] = store
+        return self._limited_stores[store_key]
+
+    def _get_store(self, protocol: PathProtocol, bucket: str):
+        """Get or create an obstore for a bucket based on protocol."""
+        store_key = f"{protocol}://{bucket}"
+        if store_key not in self._stores:
             # Limiter innermost, cache outermost: a cache hit never waits for a
             # read slot or counts as a physical read.
-            if self.max_read_concurrency is not None:
-                store = ReadLimitedStore(store, self.max_read_concurrency, self._read_stats)
+            store = self._get_limited_store(protocol, bucket)
             self._stores[store_key] = self._with_block_cache(store, store_key)
         return self._stores[store_key]
 
@@ -503,6 +541,19 @@ class VirtualTiffReader:
 
         return self._registry
 
+    def _get_parse_registry(self, protocol: PathProtocol, bucket: str):
+        """Registry for header parsing: never the block cache.
+
+        Header bytes must always come from the object itself, or a replaced
+        object would be parsed from its previous version's cached header.
+        """
+        if self._parse_registry is None:
+            self._parse_registry = ObjectStoreRegistry()
+        self._parse_registry.register(
+            f"{protocol}://{bucket}/", self._get_limited_store(protocol, bucket)
+        )
+        return self._parse_registry
+
     async def open_tiles_by_zone(
         self,
         tiles: list[AEFTileInfo],
@@ -513,6 +564,7 @@ class VirtualTiffReader:
         bbox_crs: str = "EPSG:4326",
         buffer_pixels: int = 0,
         max_concurrency: int | None = 16,
+        semaphore: asyncio.Semaphore | None = None,
     ) -> DataTree:
         """
         Open tiles and organize them by UTM zone in a DataTree.
@@ -539,6 +591,9 @@ class VirtualTiffReader:
             buffer_pixels: Extra source pixels retained around bbox.
             max_concurrency: Shared limit for tile header/open work across every
                 zone. Set to None for unbounded concurrency.
+            semaphore: Optional semaphore bounding tile opens, shared with other
+                concurrent calls so their combined opens stay within one limit.
+                When given, ``max_concurrency`` is ignored.
 
         Returns:
             DataTree with structure:
@@ -597,9 +652,8 @@ class VirtualTiffReader:
             f"{list(tiles_by_zone.keys())}"
         )
 
-        semaphore = (
-            asyncio.Semaphore(max_concurrency) if max_concurrency is not None else None
-        )
+        if semaphore is None and max_concurrency is not None:
+            semaphore = asyncio.Semaphore(max_concurrency)
 
         async def process_zone(
             zone: str, zone_tiles: list[AEFTileInfo]
@@ -697,50 +751,82 @@ class VirtualTiffReader:
             # just falls through to a normal parse, so behaviour is unchanged when
             # no cache_dir is set or the cache is cold/corrupt.
             manifest_key = (file_url, ifd)
+            validate = self.manifest_validation == "head"
+            identity: tuple | None = None
+            head_memo: list[dict | None] = []
+
+            async def head_once() -> dict | None:
+                """HEAD the object at most once per open; None if it fails."""
+                if not head_memo:
+                    try:
+                        head_memo.append(
+                            dict(await self._get_store(protocol, bucket).head_async(key))
+                        )
+                    except Exception as exc:
+                        logger.warning("could not validate manifest for %s: %s", file_url, exc)
+                        head_memo.append(None)
+                return head_memo[0]
+
+            def is_current(known: tuple | None, head_meta: dict | None) -> bool:
+                current = self._object_identity(head_meta)
+                return known is not None and current is not None and known == current
+
             manifest_store = self._manifest_cache.get(manifest_key)
+            memory_stale = False
             if manifest_store is not None:
-                self._manifest_cache.move_to_end(manifest_key)
-                self._stats["memory_manifest_hits"] += 1
-            elif cache_dir is not None:
+                identity = self._manifest_identity.get(manifest_key)
+                if validate and not is_current(identity, await head_once()):
+                    logger.info("in-memory manifest %s stale: ETag or size mismatch", file_url)
+                    self._discard_stale(file_url, manifest_key)
+                    manifest_store = None
+                    memory_stale = True  # the disk copy is at best as new: skip it
+                else:
+                    self._manifest_cache.move_to_end(manifest_key)
+                    self._stats["memory_manifest_hits"] += 1
+            if manifest_store is None and cache_dir is not None and not memory_stale:
                 manifest_store, cached_meta = await asyncio.to_thread(
                     load_cached_manifest, cache_dir, file_url, ifd, registry
                 )
                 if manifest_store is not None:
-                    if self.manifest_validation == "head":
-                        store_obj = self._get_store(protocol, bucket)
-                        try:
-                            head_meta = await store_obj.head_async(key)
-                            if (
-                                cached_meta is None or
-                                cached_meta.get("e_tag") != head_meta.get("e_tag") or
-                                cached_meta.get("size") != head_meta.get("size")
-                            ):
-                                logger.info("manifest cache %s stale: ETag or size mismatch", file_url)
-                                self._stats["manifest_stale"] = self._stats.get("manifest_stale", 0) + 1
-                                manifest_store = None
-                        except Exception as exc:
-                            logger.warning("could not validate manifest for %s: %s", file_url, exc)
-                            manifest_store = None
-                    if manifest_store is not None:
+                    identity = self._object_identity(cached_meta)
+                    if validate and not is_current(identity, await head_once()):
+                        logger.info("manifest cache %s stale: ETag or size mismatch", file_url)
+                        self._discard_stale(file_url, manifest_key)
+                        manifest_store = None
+                    else:
                         self._stats["disk_manifest_hits"] += 1
             if manifest_store is None:
+                # HEAD before the parse: the identity stored with this manifest may
+                # then only be older than the parsed bytes, never newer. An object
+                # replaced in between is caught as stale on the next validation
+                # instead of being recorded with the new object's ETag.
+                head_meta = None
+                if validate or cache_dir is not None or self._block_cache is not None:
+                    head_meta = await head_once()
+                identity = self._object_identity(head_meta)
                 manifest_store = await asyncio.to_thread(
-                    parser, url=file_url, registry=registry
+                    parser,
+                    url=file_url,
+                    registry=self._get_parse_registry(protocol, bucket),
                 )
+                # The parse read the header straight from the object; chunk reads
+                # go through the reader's (possibly caching) registry.
+                manifest_store._registry = registry
                 self._stats["manifest_parses"] += 1
                 if cache_dir is not None:
-                    store_obj = self._get_store(protocol, bucket)
-                    head_meta = None
-                    try:
-                        head_meta = await store_obj.head_async(key)
-                        if head_meta and head_meta.get("last_modified"):
-                            head_meta["last_modified"] = head_meta["last_modified"].isoformat()
-                    except Exception as exc:
-                        logger.warning("could not get object metadata for %s: %s", file_url, exc)
+                    saved_meta = head_meta
+                    if saved_meta and saved_meta.get("last_modified"):
+                        saved_meta = {
+                            **saved_meta,
+                            "last_modified": saved_meta["last_modified"].isoformat(),
+                        }
                     await asyncio.to_thread(
-                        save_manifest, cache_dir, file_url, ifd, manifest_store, head_meta
+                        save_manifest, cache_dir, file_url, ifd, manifest_store, saved_meta
                     )
-            self._remember_manifest(manifest_key, manifest_store)
+            self._remember_manifest(manifest_key, manifest_store, identity)
+            if self._block_cache is not None:
+                # A new identity for this object drops blocks of its old version.
+                self._block_cache.set_identity(file_url, identity)
 
             # Resolve the chunks argument. chunks=None asks open_zarr for numpy-
             # backed (non-dask) arrays; that is a footgun here because the very
