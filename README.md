@@ -41,8 +41,9 @@ For development:
 ```bash
 git clone https://github.com/Geethen/aef_loader_plus.git
 cd aef_loader_plus
-pip install -e ".[dev]"
-pytest
+uv sync --extra dev
+uv run python -m pytest -m "not slow"  # offline tests
+uv run python -m pytest -m slow        # live tests (hit Source Cooperative)
 ```
 
 > **Note:** the import name is still `aef_loader`, so this package conflicts with the
