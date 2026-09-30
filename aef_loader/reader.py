@@ -504,7 +504,10 @@ class VirtualTiffReader:
             ```
         """
         if not tiles:
-            raise ValueError("No tiles provided")
+            raise ValueError(
+                f"No tiles provided (bbox={bbox}, bbox_crs={bbox_crs!r}); "
+                "the tile search returned no matches - check the bbox, CRS and years"
+            )
         if buffer_pixels < 0:
             raise ValueError("buffer_pixels must be non-negative")
         if max_concurrency is not None and max_concurrency < 1:

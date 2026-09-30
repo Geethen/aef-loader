@@ -537,7 +537,11 @@ def reproject_datatree(
         reprojected_datasets.append(reprojected)
 
     if len(reprojected_datasets) == 0:
-        raise ValueError("No datasets to reproject")
+        raise ValueError(
+            "No datasets to reproject: none of the "
+            f"{len(tree.children)} zone(s) {list(tree.children)} in the tree has data "
+            f"variables (target CRS {target_geobox.crs})"
+        )
 
     if len(reprojected_datasets) == 1:
         return reprojected_datasets[0]

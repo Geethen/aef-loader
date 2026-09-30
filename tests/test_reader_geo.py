@@ -97,3 +97,21 @@ def test_zone_label_kept_when_single_crs(monkeypatch):
 def test_one_zone_label_with_multiple_crs_raises(monkeypatch):
     with pytest.raises(ValueError, match="33N"):
         _open([_tile(1, "33N", 32633), _tile(2, "33N", 32733)], monkeypatch)
+
+
+def test_no_tiles_error_says_what_was_searched():
+    reader = VirtualTiffReader()
+    with pytest.raises(ValueError, match=r"bbox=\(1, 2, 3, 4\).*EPSG:4326"):
+        asyncio.run(reader.open_tiles_by_zone([], bbox=(1, 2, 3, 4)))
+
+
+def test_reproject_empty_tree_error_lists_zones():
+    from odc.geo.geobox import GeoBox
+    from xarray import DataTree
+
+    from aef_loader.utils import reproject_datatree
+
+    tree = DataTree.from_dict({"/33N": xr.Dataset()})
+    target = GeoBox.from_bbox((0, 0, 100, 100), crs="EPSG:32633", resolution=10)
+    with pytest.raises(ValueError, match=r"33N.*EPSG:32633"):
+        reproject_datatree(tree, target)
