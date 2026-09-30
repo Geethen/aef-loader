@@ -34,8 +34,8 @@ except ImportError:  # Compatibility with older VirtualiZarr releases
     from virtualizarr.registry import ObjectStoreRegistry
 
 from aef_loader.cache import load_cached_manifest, save_manifest
+from aef_loader.collection import AEF, Collection
 from aef_loader.constants import AEF_NODATA_VALUE, SOURCE_COOP_REGION
-from aef_loader.utils import set_aef_nodata
 
 if TYPE_CHECKING:
     from aef_loader.types import AEFTileInfo
@@ -165,11 +165,11 @@ def _get_geobox_from_dataset(ds: xr.Dataset, crs: str) -> GeoBox:
     return GeoBox(shape=(height, width), affine=affine, crs=crs)
 
 
-def _nodata_fill_for(ds: xr.Dataset):
+def _nodata_fill_for(ds: xr.Dataset, nodata: int | float | None = AEF_NODATA_VALUE):
     """Join/concat fill value in the dataset's own dtype (no dtype promotion).
 
-    For integer (raw/quantized) data, returns the AEF nodata sentinel (-128) cast
-    to that integer dtype, so an outer-join gap-fill stays int8 instead of being
+    For integer (raw/quantized) data, returns the collection's nodata sentinel
+    (AEF: -128) cast to that integer dtype, so an outer-join gap-fill stays int8 instead of being
     promoted to float64 by a NaN fill. For float (dequantized) data, returns NaN,
     the natural nodata for floats. Mixed/absent vars fall back to NaN.
     """
@@ -177,13 +177,15 @@ def _nodata_fill_for(ds: xr.Dataset):
 
     for var in ds.data_vars:
         dtype = ds[var].dtype
-        if np.issubdtype(dtype, np.integer):
-            return dtype.type(AEF_NODATA_VALUE)
+        if np.issubdtype(dtype, np.integer) and nodata is not None:
+            return dtype.type(nodata)
         return np.nan
     return np.nan
 
 
-def _concat_time_slices(time_slices: list[xr.Dataset]) -> xr.Dataset:
+def _concat_time_slices(
+    time_slices: list[xr.Dataset], nodata: int | float | None = AEF_NODATA_VALUE
+) -> xr.Dataset:
     """Concatenate years without promoting integer data at coverage gaps."""
     return xr.concat(
         time_slices,
@@ -192,7 +194,7 @@ def _concat_time_slices(time_slices: list[xr.Dataset]) -> xr.Dataset:
         compat="override",
         combine_attrs="drop_conflicts",
         join="outer",
-        fill_value=_nodata_fill_for(time_slices[0]),
+        fill_value=_nodata_fill_for(time_slices[0], nodata),
     )
 
 
@@ -350,6 +352,7 @@ class VirtualTiffReader:
         gcp_project: str | None = None,
         manifest_cache_dir: str | Path | None = None,
         memory_manifest_cache_size: int = 128,
+        collection: Collection = AEF,
     ):
         """
         Initialize the virtual TIFF reader.
@@ -365,7 +368,11 @@ class VirtualTiffReader:
                 cache is used and every open reparses (upstream behaviour).
             memory_manifest_cache_size: Maximum number of reconstructed manifests
                 retained by this reader. Set to 0 to disable in-memory reuse.
+            collection: Description of the COG collection being read (band
+                names, nodata sentinel, encoding). Defaults to AlphaEarth
+                Foundations.
         """
+        self.collection = collection
         self.gcp_project = gcp_project
         self.manifest_cache_dir = (
             Path(manifest_cache_dir) if manifest_cache_dir is not None else None
@@ -618,8 +625,8 @@ class VirtualTiffReader:
         Tiles whose crop to ``bbox`` is empty are skipped; returns None when every
         tile in the zone is empty. All tiles must be in the same CRS. Combines spatially and temporally,
         keeping bands as a single 'embeddings' variable with a band dimension.
-        Sets both ``nodata`` and ``_FillValue`` to ``-128`` on the output via
-        ``set_aef_nodata``.
+        Band labels, ``nodata``/``_FillValue`` (AEF: ``-128``) and the
+        ``aef:encoding`` attr are set from ``self.collection``.
         """
         parser = VirtualTIFF(ifd=ifd)
 
@@ -744,7 +751,7 @@ class VirtualTiffReader:
                 # correct. (For already-dequantized float input, callers pass
                 # float data and NaN promotion is a no-op; -128 as float is still
                 # a valid distinct fill there.)
-                fill = _nodata_fill_for(time_datasets[0])
+                fill = _nodata_fill_for(time_datasets[0], self.collection.nodata)
                 spatial_combined = xr.combine_by_coords(
                     time_datasets,
                     coords="minimal",
@@ -758,17 +765,17 @@ class VirtualTiffReader:
         if len(time_slices) == 1:
             combined = time_slices[0]
         else:
-            combined = _concat_time_slices(time_slices)
+            combined = _concat_time_slices(time_slices, self.collection.nodata)
 
         # Keep bands as a single variable with string band coordinates
         if "band" in combined.dims:
             data_var = list(combined.data_vars)[0]
             da = combined[data_var]
-            # Assign string band coordinate labels (A00, A01, ..., A63)
-            band_names = [f"A{i:02d}" for i in range(da.sizes["band"])]
-            da = da.assign_coords(band=band_names)
+            # Band labels (AEF: A00..A63), nodata and encoding come from the
+            # collection description.
+            if self.collection.band_names is not None:
+                da = da.assign_coords(band=self.collection.band_names(da.sizes["band"]))
             da.name = "embeddings"
-            da = set_aef_nodata(da)
-            combined = da.to_dataset()
+            combined = self.collection.tag(da.to_dataset())
 
         return combined

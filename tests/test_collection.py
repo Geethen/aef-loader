@@ -120,3 +120,51 @@ def test_custom_collection_registration():
         assert get_collection("test-custom") is custom
     finally:
         _REGISTRY.pop("test-custom", None)
+
+
+def _tree(ds):
+    from affine import Affine
+    from odc.geo.geobox import GeoBox
+    from odc.geo.xr import assign_crs, xr_coords
+
+    gb = GeoBox(shape=(2, 2), affine=Affine(10, 0, 500000, 0, -10, 6500000), crs="EPSG:32631")
+    ds = ds.assign_coords(**{k: v.values for k, v in xr_coords(gb).items() if k in ("x", "y")})
+    return xr.DataTree.from_dict({"/31N": assign_crs(ds, "EPSG:32631")}), gb
+
+
+def _tessera_zone(dequantized: bool):
+    emb = np.ones((1, 2, 2, 2), dtype=np.int8)
+    ds = TESSERA.tag(
+        xr.Dataset(
+            {
+                "embeddings": (("time", "band", "y", "x"), emb),
+                "scales": (("time", "y", "x"), np.full((1, 2, 2), 0.5, np.float32)),
+                "s2_obs_count": (("time", "y", "x"), np.full((1, 2, 2), 3, np.int16)),
+            },
+            coords={"time": [2024], "band": [0, 1]},
+        )
+    )
+    return TESSERA.dequantize(ds) if dequantized else ds
+
+
+def test_reproject_allows_bilinear_on_dequantized_tessera_with_int_quality():
+    from aef_loader.utils import reproject_datatree
+
+    tree, gb = _tree(_tessera_zone(dequantized=True))
+    out = reproject_datatree(tree, gb, resampling="bilinear")  # used to raise
+    assert out.embeddings.dtype == np.float32
+
+
+def test_reproject_refuses_bilinear_on_float_cast_aef_codes():
+    from aef_loader.utils import int8_to_float32, reproject_datatree
+
+    raw = AEF.tag(
+        xr.Dataset(
+            {"embeddings": (("time", "band", "y", "x"), np.full((1, 1, 2, 2), 64, np.int8))},
+            coords={"time": [2024], "band": ["A00"]},
+        )
+    )
+    cast = raw.assign(embeddings=int8_to_float32(raw.embeddings))
+    tree, gb = _tree(cast)
+    with pytest.raises(ValueError, match="raw quantized"):
+        reproject_datatree(tree, gb, resampling="bilinear")  # used to pass silently
