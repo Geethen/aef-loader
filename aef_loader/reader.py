@@ -322,7 +322,7 @@ class VirtualTiffReader:
         index = AEFIndex(source=DataSource.SOURCE_COOP)
         await index.download()
         index.load()
-        tiles = await index.query(bbox=(-122.5, 37.5, -121.5, 38.5), years=(2020, 2022))
+        tiles = index.search(bbox=(-122.5, 37.5, -121.5, 38.5), years=(2020, 2022))
 
         # Load by UTM zone
         async with VirtualTiffReader() as reader:
@@ -464,7 +464,7 @@ class VirtualTiffReader:
         data across zones, use `reproject_datatree()` from the utils module.
 
         Args:
-            tiles: List of AEFTileInfo objects from AEFIndex.query()
+            tiles: List of AEFTileInfo objects from AEFIndex.search()
             ifd: Image File Directory index (0 for full resolution)
             chunks: The chunks parameter to pass to open_zarr, defaults to auto,
                 with additional storage-aligned profiles: native, balanced
@@ -485,7 +485,7 @@ class VirtualTiffReader:
 
         Example:
             ```python
-            tiles = await index.query(bbox=bbox, years=(2020, 2022))
+            tiles = index.search(bbox=bbox, years=(2020, 2022))
             async with VirtualTiffReader() as reader:
                 tree = await reader.open_tiles_by_zone(tiles)
             for zone in tree.children:

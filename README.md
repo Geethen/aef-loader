@@ -14,7 +14,7 @@ project; see [NOTICE](NOTICE) and [docs/UPSTREAM_README.md](docs/UPSTREAM_README
 - `chunks=None` no longer materialises whole tiles, plus `chunks="native" | "balanced" | "all-bands"` options
 - On-disk and in-memory manifest (COG header) caching
 - Faster LUT-based `dequantize_aef`
-- `AEFIndex.query(bbox_crs=...)` with densified bbox reprojection
+- `AEFIndex.search(bbox_crs=...)` with densified bbox reprojection
 - `aoi_geobox` for lattice-snapped, mosaic-safe grids
 - `reproject_datatree` refuses lossy resampling on int8 data unless `allow_lossy_resampling=True`
 - `combine_by_coords` keeps int8 and its `-128` nodata sentinel
@@ -63,7 +63,7 @@ async def main():
     index.load()
 
     bbox = (-122.5, 37.5, -122.0, 38.0)
-    tiles = await index.query(bbox=bbox, years=(2020, 2023))
+    tiles = index.search(bbox=bbox, years=(2020, 2023))
 
     async with VirtualTiffReader(manifest_cache_dir="aef-manifests") as reader:
         tree = await reader.open_tiles_by_zone(tiles, chunks="balanced", bbox=bbox, bbox_crs="EPSG:4326")
