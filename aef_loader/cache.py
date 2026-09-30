@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 # Bump when the on-disk JSON layout or the manifest semantics change, so stale
 # entries from an older aef-loader are ignored rather than mis-read.
-CACHE_FORMAT_VERSION = 1
+CACHE_FORMAT_VERSION = 2
 
 
 def _cache_key(url: str, ifd: int) -> str:
@@ -60,7 +60,7 @@ def cache_path_for(cache_dir: Path, url: str, ifd: int) -> Path:
     return Path(cache_dir) / f"manifest_{_cache_key(url, ifd)}.json"
 
 
-def _manifest_to_jsonable(store: ManifestStore) -> dict:
+def _manifest_to_jsonable(store: ManifestStore, object_meta: dict | None = None) -> dict:
     """Extract the JSON-serialisable state of a single-group ``ManifestStore``.
 
     Captures, per array: the Zarr V3 metadata dict, and the chunk manifest in a
@@ -91,6 +91,7 @@ def _manifest_to_jsonable(store: ManifestStore) -> dict:
         }
     return {
         "format_version": CACHE_FORMAT_VERSION,
+        "object_meta": object_meta,
         "group_attributes": dict(group.metadata.attributes),
         "arrays": arrays_out,
     }
@@ -126,7 +127,7 @@ def _jsonable_to_manifest(
 
 def load_cached_manifest(
     cache_dir: Path, url: str, ifd: int, registry: ObjectStoreRegistry
-) -> ManifestStore | None:
+) -> tuple[ManifestStore | None, dict | None]:
     """Return a rebuilt ``ManifestStore`` from cache, or None on miss/stale/error.
 
     Never raises: any problem reading or parsing the cache is treated as a miss so
@@ -134,22 +135,22 @@ def load_cached_manifest(
     """
     path = cache_path_for(cache_dir, url, ifd)
     if not path.exists():
-        return None
+        return None, None
     try:
         data = json.loads(path.read_text())
         if data.get("format_version") != CACHE_FORMAT_VERSION:
             logger.debug("manifest cache %s: stale format, ignoring", path.name)
-            return None
+            return None, None
         store = _jsonable_to_manifest(data, registry)
         logger.debug("manifest cache hit: %s", url)
-        return store
+        return store, data.get("object_meta")
     except Exception as exc:  # noqa: BLE001 — cache must never be fatal
         logger.warning("manifest cache %s unreadable (%s); reparsing", path.name, exc)
-        return None
+        return None, None
 
 
 def save_manifest(
-    cache_dir: Path, url: str, ifd: int, store: ManifestStore
+    cache_dir: Path, url: str, ifd: int, store: ManifestStore, object_meta: dict | None = None
 ) -> None:
     """Serialise ``store`` to the cache for (url, ifd). Best-effort; never raises.
 
@@ -162,7 +163,7 @@ def save_manifest(
     tmp_name = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        payload = _manifest_to_jsonable(store)
+        payload = _manifest_to_jsonable(store, object_meta)
         with tempfile.NamedTemporaryFile(
             "w", dir=path.parent, suffix=".tmp", delete=False
         ) as tmp:

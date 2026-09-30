@@ -8,7 +8,7 @@ import aef_loader.cache as cache
 
 
 def _patch_payload(monkeypatch, payload):
-    monkeypatch.setattr(cache, "_manifest_to_jsonable", lambda store: payload)
+    monkeypatch.setattr(cache, "_manifest_to_jsonable", lambda store, object_meta=None: payload)
 
 
 def test_concurrent_saves_of_same_key_use_unique_temp_files(monkeypatch, tmp_path):
@@ -55,3 +55,12 @@ def test_failed_replace_cleans_up_temp_file(monkeypatch, tmp_path):
     monkeypatch.setattr(cache.os, "replace", boom)
     cache.save_manifest(tmp_path, "s3://b/t.tif", 0, None)
     assert list(tmp_path.iterdir()) == []
+
+
+def test_manifest_validation_rejects_unknown_mode():
+    import pytest
+
+    from aef_loader.reader import VirtualTiffReader
+
+    with pytest.raises(ValueError, match="manifest_validation"):
+        VirtualTiffReader(manifest_validation="HEAD")
