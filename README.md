@@ -42,8 +42,8 @@ For development:
 git clone https://github.com/Geethen/aef_loader_plus.git
 cd aef_loader_plus
 uv sync --extra dev
-python -m pytest -m "not slow"  # offline tests
-python -m pytest -m slow        # live tests
+uv run python -m pytest -m "not slow"  # offline tests
+uv run python -m pytest -m slow        # live tests (hit Source Cooperative)
 ```
 
 > **Note:** the import name is still `aef_loader`, so this package conflicts with the
