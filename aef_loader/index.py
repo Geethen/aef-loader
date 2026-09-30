@@ -191,21 +191,23 @@ class AEFIndex:
 
     def __init__(
         self,
-        source: DataSource = DataSource.GCS,
+        source: DataSource | str = DataSource.SOURCE_COOP,
         gcp_project: str | None = None,
-        cache_dir: Path | None = None,
+        cache_dir: Path | str | None = None,
     ):
         """
         Initialize AEF index manager.
 
         Args:
-            source: Data source (GCS or SOURCE_COOP)
+            source: Data source: ``DataSource.SOURCE_COOP`` (default, public) or
+                ``DataSource.GCS`` (requester pays); the strings
+                ``"source_coop"``/``"gcs"`` are accepted case-insensitively
             gcp_project: GCP project ID for requester-pays bucket access (GCS only)
             cache_dir: Directory for caching the index (default: the per-user
                 cache directory, ``platformdirs.user_cache_dir("aef-loader")``
                 when available, else ``~/.cache/aef-loader``)
         """
-        self.source = source
+        self.source = DataSource(source)
         self.gcp_project = gcp_project
         self.cache_dir = Path(cache_dir) if cache_dir else _default_cache_dir()
         self._df: pd.DataFrame | None = None

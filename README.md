@@ -58,7 +58,8 @@ from aef_loader.utils import reproject_datatree
 from odc.geo.geobox import GeoBox
 
 async def main():
-    # Source Cooperative is free and needs no auth
+    # Source Cooperative (the default) is free and needs no auth;
+    # use DataSource.GCS with gcp_project=... for the requester-pays bucket
     index = AEFIndex(source=DataSource.SOURCE_COOP)
     await index.download()
     index.load()

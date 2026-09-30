@@ -225,3 +225,31 @@ def test_search_raises_on_unparseable_crs():
     index._df = df
     with pytest.raises(ValueError, match="CRS"):
         index.search()
+
+
+def test_default_source_is_source_coop():
+    assert AEFIndex().source is DataSource.SOURCE_COOP
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("source_coop", DataSource.SOURCE_COOP),
+        ("SOURCE_COOP", DataSource.SOURCE_COOP),
+        ("gcs", DataSource.GCS),
+        ("GCS", DataSource.GCS),
+        (DataSource.GCS, DataSource.GCS),
+    ],
+)
+def test_source_strings_are_normalised(value, expected):
+    assert AEFIndex(source=value).source is expected
+
+
+def test_unknown_source_string_raises():
+    with pytest.raises(ValueError):
+        AEFIndex(source="s3")
+
+
+def test_cache_dir_accepts_str_and_path(tmp_path):
+    assert AEFIndex(cache_dir=str(tmp_path)).cache_dir == tmp_path
+    assert AEFIndex(cache_dir=tmp_path).cache_dir == tmp_path
