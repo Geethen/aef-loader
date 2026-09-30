@@ -13,7 +13,14 @@ For combining data across zones, use reproject_datatree() from the utils module.
 
 from importlib.metadata import PackageNotFoundError, version
 
+from aef_loader.api import aopen_aef, open_aef
 from aef_loader.constants import DataSource
+from aef_loader.extract import (
+    aextract_points,
+    aextract_zonal,
+    extract_points,
+    extract_zonal,
+)
 from aef_loader.index import AEFIndex
 from aef_loader.reader import VirtualTiffReader
 from aef_loader.tessera import open_tessera
@@ -37,10 +44,16 @@ __all__ = [
     "AEFTileInfo",
     "DataSource",
     # Utility functions
+    "aextract_points",
+    "aextract_zonal",
     "aoi_geobox",
+    "aopen_aef",
     "dequantize_aef",
+    "extract_points",
+    "extract_zonal",
     "int8_to_float32",
     "mask_nodata",
+    "open_aef",
     "open_tessera",
     "quantize_aef",
     "reproject_datatree",
