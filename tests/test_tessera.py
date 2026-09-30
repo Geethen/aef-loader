@@ -1,9 +1,17 @@
 """Tests for the TESSERA loader (offline helpers + one live smoke test)."""
 
+import warnings
+
 import numpy as np
 import pytest
+import xarray as xr
 
-from aef_loader.tessera import _candidate_zones, _normalise_years, open_tessera
+from aef_loader.tessera import (
+    _candidate_zones,
+    _normalise_years,
+    _select_years,
+    open_tessera,
+)
 
 
 def test_candidate_zones_single_and_multi():
@@ -19,9 +27,33 @@ def test_normalise_years_forms_and_generator():
     gen = iter([2024, 2022])
     sel = _normalise_years(gen)
     assert sel == [2022, 2024]
-    # The normalised list can be reused for every zone; the generator could not.
+    # A normalised list can be reused for every zone; the generator could not.
     assert sel == [2022, 2024]
-    assert list(gen) == []
+
+
+def _years_ds(years):
+    return xr.Dataset({"v": ("time", list(range(len(years))))}, coords={"time": years})
+
+
+def test_select_years_partial_warns_and_subsets():
+    ds = _years_ds([2020, 2021, 2022])
+    with pytest.warns(UserWarning, match=r"\[2025\]"):
+        out = _select_years(ds, [2021, 2025], "utm31")
+    assert out["time"].values.tolist() == [2021]
+
+
+def test_select_years_all_present_is_silent():
+    ds = _years_ds([2020, 2021])
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = _select_years(ds, [2020, 2021], "utm31")
+    assert out.sizes["time"] == 2
+
+
+def test_select_years_none_present_raises_with_available():
+    ds = _years_ds([2020, 2021])
+    with pytest.raises(ValueError, match=r"\[2030\].*\[2020, 2021\]"):
+        _select_years(ds, [2030], "utm31")
 
 
 @pytest.mark.slow

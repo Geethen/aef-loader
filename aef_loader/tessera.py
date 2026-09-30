@@ -20,6 +20,7 @@ works on it unchanged.
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Iterable
 
 import numpy as np
@@ -72,6 +73,24 @@ def _normalise_years(years: int | Iterable[int] | tuple[int, int]) -> list[int]:
     if isinstance(years, tuple) and len(years) == 2:
         return list(range(int(years[0]), int(years[1]) + 1))
     return sorted({int(y) for y in years})
+
+
+def _select_years(ds: xr.Dataset, sel: list[int], group_name: str) -> xr.Dataset:
+    """Select ``sel`` years from ``ds``; raise if none exist, warn if some are missing."""
+    available = set(ds["time"].values.tolist())
+    present = [y for y in sel if y in available]
+    missing = [y for y in sel if y not in available]
+    if not present:
+        raise ValueError(
+            f"None of the requested years {sel} are present in {group_name}; "
+            f"the store has years {sorted(available)}"
+        )
+    if missing:
+        warnings.warn(
+            f"Years {missing} are not present in {group_name} and were skipped",
+            stacklevel=3,
+        )
+    return ds.sel(time=present)
 
 
 def open_tessera(
@@ -157,7 +176,7 @@ def open_tessera(
             y=f + e * (np.arange(row0, row1) + 0.5),
         )
         if sel is not None:
-            ds = ds.sel(time=[t for t in sel if t in set(ds["time"].values.tolist())])
+            ds = _select_years(ds, sel, group_name)
 
         keep = ["embeddings", "scales"] + (list(_QUALITY_VARS) if include_quality else [])
         ds = ds[[v for v in keep if v in ds.data_vars]]
