@@ -175,6 +175,46 @@ def _write_table_atomic(table: pa.Table, path: Path) -> None:
         tmp.unlink(missing_ok=True)
 
 
+def _as_year(value: Any) -> int:
+    """``2024``, ``np.int64(2024)``, ``"2024"`` or ``"2024-05-10"`` -> ``2024``."""
+    if isinstance(value, str):
+        if not _YEAR_RE.match(value.strip()):
+            raise ValueError(
+                f"invalid year string: {value!r} (expected 'YYYY' or 'YYYY-MM-DD')"
+            )
+        return int(value.strip()[:4])
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        raise ValueError(f"invalid year: {value!r}")
+    return int(value)
+
+def selected_years(years: Any) -> list[int]:
+    """Years selected by ``years``, using the same rules as the extract API.
+
+    A single year (int, numpy integer or ``"YYYY[-MM-DD]"`` string); a 2-tuple
+    ``(start, end)`` for an inclusive range; or any other iterable as an
+    explicit list of years.
+    """
+    if isinstance(years, (int, np.integer, str)):
+        return [_as_year(years)]
+    if isinstance(years, tuple):
+        if len(years) != 2:
+            raise ValueError(
+                f"years tuple must be (start, end), got length {len(years)}; "
+                "pass a list for an explicit set of years"
+            )
+        start, end = _as_year(years[0]), _as_year(years[1])
+        if end < start:
+            raise ValueError(f"years range {years!r} ends before it starts")
+        return list(range(start, end + 1))
+    try:
+        selected = sorted({_as_year(y) for y in years})
+    except TypeError:
+        raise ValueError(f"invalid years: {years!r}") from None
+    if not selected:
+        raise ValueError("years must not be empty")
+    return selected
+
+
 class AEFIndex:
     """
     Manages the AEF tile index for efficient spatial/temporal queries.
@@ -390,45 +430,8 @@ class AEFIndex:
         self._geoms = shapely.from_wkb(wkb)
         return self._geoms
 
-    @staticmethod
-    def _as_year(value: Any) -> int:
-        """``2024``, ``np.int64(2024)``, ``"2024"`` or ``"2024-05-10"`` -> ``2024``."""
-        if isinstance(value, str):
-            if not _YEAR_RE.match(value.strip()):
-                raise ValueError(
-                    f"invalid year string: {value!r} (expected 'YYYY' or 'YYYY-MM-DD')"
-                )
-            return int(value.strip()[:4])
-        if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
-            raise ValueError(f"invalid year: {value!r}")
-        return int(value)
-
     def _selected_years(self, years: Any) -> list[int]:
-        """Years selected by ``years``, using the same rules as the extract API.
-
-        A single year (int, numpy integer or ``"YYYY[-MM-DD]"`` string); a 2-tuple
-        ``(start, end)`` for an inclusive range; or any other iterable as an
-        explicit list of years.
-        """
-        if isinstance(years, (int, np.integer, str)):
-            return [self._as_year(years)]
-        if isinstance(years, tuple):
-            if len(years) != 2:
-                raise ValueError(
-                    f"years tuple must be (start, end), got length {len(years)}; "
-                    "pass a list for an explicit set of years"
-                )
-            start, end = self._as_year(years[0]), self._as_year(years[1])
-            if end < start:
-                raise ValueError(f"years range {years!r} ends before it starts")
-            return list(range(start, end + 1))
-        try:
-            selected = sorted({self._as_year(y) for y in years})
-        except TypeError:
-            raise ValueError(f"invalid years: {years!r}") from None
-        if not selected:
-            raise ValueError("years must not be empty")
-        return selected
+        return selected_years(years)
 
     def _get_start_and_end_year(self, years: Any) -> tuple[int, int]:
         """Inclusive (first, last) year selected by ``years``."""

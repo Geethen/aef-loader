@@ -210,13 +210,6 @@ def _transformer(src: str, dst: str):
     return Transformer.from_crs(src, dst, always_xy=True)
 
 
-def _year_bounds(years) -> tuple[int, int]:
-    if isinstance(years, int):
-        return years, years
-    start, end = years
-    return int(str(start)[:4]), int(str(end)[:4])
-
-
 def _bounds_distance(tile: AEFTileInfo, px: float, py: float) -> float:
     west, south, east, north = tile.utm_bounds
     return math.hypot(max(west - px, 0, px - east), max(south - py, 0, py - north))
@@ -235,7 +228,9 @@ def _resolve_point(
 ) -> _Resolved:
     """Pick the point's CRS and the tiles that overlap its chip window."""
     lon, lat = _transformer(crs, "EPSG:4326").transform(x, y)
-    y0, y1 = _year_bounds(years)
+    from aef_loader.index import selected_years
+
+    wanted = set(selected_years(years))
 
     if hasattr(source, "search"):
         candidates = source.search(bbox=(lon, lat, lon, lat), years=years)
@@ -243,7 +238,7 @@ def _resolve_point(
         candidates = [
             t
             for t in source
-            if y0 <= t.year <= y1
+            if t.year in wanted
             and t.bbox[0] <= lon <= t.bbox[2]
             and t.bbox[1] <= lat <= t.bbox[3]
         ]
@@ -282,7 +277,7 @@ def _resolve_point(
     if hasattr(source, "search"):
         near = source.search(bbox=window, bbox_crs=f"EPSG:{epsg}", years=years)
     else:
-        near = [t for t in source if y0 <= t.year <= y1]
+        near = [t for t in source if t.year in wanted]
         w, s, e, n = _transformer(f"EPSG:{epsg}", "EPSG:4326").transform_bounds(
             *window, densify_pts=21
         )
@@ -349,7 +344,7 @@ async def read_chips(
         points: Sequence of ``(x, y)`` in ``crs``, or a GeoDataFrame/GeoSeries
             (its own CRS wins; non-point geometries use a representative point).
         size: Chip edge in native pixels.
-        years: A year, or ``(start, end)`` years (inclusive), as for
+        years: A year, ``(start, end)`` years (inclusive), or a list of years, as for
             ``AEFIndex.search``; the chip's time axis has one entry per year found.
         index: An ``AEFIndex`` (searched per chip) or a list of ``AEFTileInfo``.
         reader: Reader to use. Pass one built with ``block_cache_bytes`` to reuse

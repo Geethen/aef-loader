@@ -239,3 +239,18 @@ def test_read_chips_accepts_geodataframe():
     gdf = gpd.GeoDataFrame(geometry=[Point(x, y)], crs=f"EPSG:{EPSG}")
     (chip,) = asyncio.run(read_chips(gdf, size=4, years=2024, index=tiles, reader=FakeReader()))
     np.testing.assert_array_equal(chip.data[0], expected(2024, 3, 3, 4))
+
+
+def test_year_selection_matches_index_rules():
+    # read_chips(years=[2024]) used to crash: lists were unpacked as (start, end).
+    from aef_loader.chips import _resolve_point
+
+    tiles = [
+        AEFTileInfo(id=str(y), path=f"s3://b/{y}.tif", year=y, bbox=(4.5, 58.0, 6.5, 59.5),
+                    crs_epsg=32631, utm_zone="31N", utm_bounds=(600000, 6450000, 700000, 6550000))
+        for y in (2022, 2023, 2024)
+    ]
+    for years, expected in [([2024], {2024}), ([2022, 2024], {2022, 2024}),
+                            ((2022, 2023), {2022, 2023}), (2023, {2023}), ("2024", {2024})]:
+        resolved = _resolve_point(5.6, 58.7, "EPSG:4326", tiles, years, 16)
+        assert {t.year for t in resolved.tiles} == expected, years
