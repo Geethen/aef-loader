@@ -82,6 +82,28 @@ async def main():
 asyncio.run(main())
 ```
 
+## Chips
+
+`read_chip` and `read_chips` return fixed-size windows of raw codes on a tile's
+native 10 m grid (no resampling), north-up, mosaicking neighbouring tiles when a
+chip crosses a tile edge. `read_chips` opens each tile once and computes all windows
+of a tile group together, so a stored block shared by several chips is fetched once.
+The stored block is the minimum read: a 256 px chip costs 64 GETs (about 28 MB).
+
+```python
+from aef_loader import VirtualTiffReader, read_chips
+
+async with VirtualTiffReader(block_cache_bytes=512 * 2**20) as reader:
+    chips = await read_chips(
+        [(5.6, 58.7), (5.61, 58.71)], size=256, years=2024, index=index, reader=reader
+    )
+chips[0].data.shape  # (time, band, y, x) == (1, 64, 256, 256), int8
+```
+
+`block_cache_bytes` adds an in-memory LRU of compressed blocks, so later calls on the
+same reader skip the network for blocks already read (see `reader.stats`).
+The chip is centred on the pixel containing the point, at index `size // 2`.
+
 ## TESSERA embeddings
 
 Besides AEF, `open_tessera` reads [TESSERA](https://geotessera.org) embeddings (128 bands, 10 m, yearly 2017–2025)
