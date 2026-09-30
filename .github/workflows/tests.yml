@@ -1,12 +1,34 @@
 name: tests
 on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: test (${{ matrix.os }}, python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+    
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: pytest -m "not slow"
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --extra dev --locked
+      - name: Run lint
+        run: uv run ruff check aef_loader tests
+      - name: Run tests
+        run: uv run python -m pytest -m "not slow" -q
