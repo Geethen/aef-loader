@@ -33,6 +33,7 @@ try:
 except ImportError:  # Compatibility with older VirtualiZarr releases
     from virtualizarr.registry import ObjectStoreRegistry
 
+from aef_loader._limits import ReadLimitedStore, ReadStats
 from aef_loader.blockcache import BlockCache, CachingStore
 from aef_loader.cache import load_cached_manifest, save_manifest
 from aef_loader.collection import AEF, Collection
@@ -356,6 +357,7 @@ class VirtualTiffReader:
         collection: Collection = AEF,
         manifest_validation: Literal["none", "head"] = "none",
         block_cache_bytes: int | None = None,
+        max_read_concurrency: int | None = None,
     ):
         """
         Initialize the virtual TIFF reader.
@@ -381,8 +383,16 @@ class VirtualTiffReader:
                 object store, so blocks read again (by later chips or calls on
                 this reader) are not re-fetched. Values are unchanged. Hits,
                 misses and size appear in ``stats``. None (default) disables it.
+            max_read_concurrency: Maximum concurrent physical pixel reads across
+                all registered object stores, event loops, and threads. None
+                (the default) leaves stores unwrapped and preserves unbounded
+                read behavior.
         """
         self.collection = collection
+        if max_read_concurrency is not None and max_read_concurrency < 1:
+            raise ValueError("max_read_concurrency must be positive or None")
+        self.max_read_concurrency = max_read_concurrency
+        self._read_stats = ReadStats()
         self.gcp_project = gcp_project
         if manifest_validation not in ("none", "head"):
             raise ValueError(
@@ -415,6 +425,9 @@ class VirtualTiffReader:
         stats = self._stats.copy()
         if self._block_cache is not None:
             stats.update(self._block_cache.stats)
+        if self.max_read_concurrency is not None:
+            # read_* counters only exist when stores are wrapped by the limiter.
+            stats.update(self._read_stats.snapshot())
         return stats
 
     def _remember_manifest(self, key: tuple[str, int], manifest_store) -> None:
@@ -461,14 +474,16 @@ class VirtualTiffReader:
         store_key = f"{protocol}://{bucket}"
         if store_key not in self._stores:
             if protocol == "gs":
-                self._stores[store_key] = self._get_gcs_store(bucket)
+                store = self._get_gcs_store(bucket)
             elif protocol == "s3":
-                self._stores[store_key] = self._get_s3_store(bucket)
+                store = self._get_s3_store(bucket)
             else:
                 raise ValueError(f"Unsupported protocol: {protocol}")
-            self._stores[store_key] = self._with_block_cache(
-                self._stores[store_key], store_key
-            )
+            # Limiter innermost, cache outermost: a cache hit never waits for a
+            # read slot or counts as a physical read.
+            if self.max_read_concurrency is not None:
+                store = ReadLimitedStore(store, self.max_read_concurrency, self._read_stats)
+            self._stores[store_key] = self._with_block_cache(store, store_key)
         return self._stores[store_key]
 
     def _with_block_cache(self, store, base_url: str):

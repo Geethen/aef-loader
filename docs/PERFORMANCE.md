@@ -9,6 +9,7 @@ pixel subsetting; none of them resample or modify downloaded embedding values.
     async with VirtualTiffReader(
         manifest_cache_dir="/local-ssd/aef-manifests",
         memory_manifest_cache_size=128,
+        max_read_concurrency=32,
     ) as reader:
         tree = await reader.open_tiles_by_zone(
             tiles,
@@ -33,6 +34,49 @@ max_concurrency is shared across all UTM zones. Values between 8 and 16 are a
 reasonable starting point; use reader.stats["last_open_wall_seconds"] to tune
 for the network and machine. The remaining counters distinguish in-memory
 manifest reuse, disk-cache reuse, and remote header parsing.
+
+## Read concurrency
+
+`max_concurrency` only bounds tile opening and manifest/header work.
+`max_read_concurrency` is a separate, reader-wide budget for physical object
+store reads made later by Zarr/Dask. It applies across all registered buckets,
+event loops, and worker threads. `None` is the constructor default and retains
+the historical unbounded behavior; use `32` as the operational default unless
+the deployment has a measured reason to choose another value. With a finite
+limit, the counters `read_requests`, `read_bytes`, and `read_peak_inflight` in
+`reader.stats` make that tuning visible.
+
+The following was measured on 30 September 2026 from this office network
+(not in `us-west-2`) against the public Source Cooperative tile selected at
+lon 5.6, lat 58.7, year 2024. Each all-band window was aligned to native
+1024-pixel COG blocks, opened with `chunks="native"`, reduced after reading to
+avoid retaining the full result, and repeated twice. `None` was measured with
+an unbounded metering proxy after tile opening so that it remains equivalent to
+the ordinary unwrapped `None` reader while reporting the same pixel counters.
+
+| Window | Limit | Repeat | Wall time (s) | GETs | Read bytes | Peak reads |
+|---|---:|---:|---:|---:|---:|---:|
+| 2048 x 2048 | None | 1 | 7.037 | 256 | 140,971,274 | 18 |
+| 2048 x 2048 | None | 2 | 8.881 | 256 | 140,971,274 | 18 |
+| 2048 x 2048 | 8 | 1 | 13.624 | 256 | 140,971,274 | 8 |
+| 2048 x 2048 | 8 | 2 | 11.277 | 256 | 140,971,274 | 8 |
+| 2048 x 2048 | 32 | 1 | 6.821 | 256 | 140,971,274 | 18 |
+| 2048 x 2048 | 32 | 2 | 4.940 | 256 | 140,971,274 | 18 |
+| 2048 x 2048 | 128 | 1 | 6.846 | 256 | 140,971,274 | 18 |
+| 2048 x 2048 | 128 | 2 | 5.926 | 256 | 140,971,274 | 18 |
+| 4096 x 4096 | None | 1 | 18.466 | 1,024 | 341,273,886 | 18 |
+| 4096 x 4096 | None | 2 | 15.211 | 1,024 | 341,273,886 | 18 |
+| 4096 x 4096 | 8 | 1 | 36.007 | 1,024 | 341,273,886 | 8 |
+| 4096 x 4096 | 8 | 2 | 35.035 | 1,024 | 341,273,886 | 8 |
+| 4096 x 4096 | 32 | 1 | 18.751 | 1,024 | 341,273,886 | 18 |
+| 4096 x 4096 | 32 | 2 | 15.338 | 1,024 | 341,273,886 | 18 |
+| 4096 x 4096 | 128 | 1 | 19.012 | 1,024 | 341,273,886 | 18 |
+| 4096 x 4096 | 128 | 2 | 15.166 | 1,024 | 341,273,886 | 18 |
+
+This scheduler did not issue more than 18 reads, so 32 and 128 are effectively
+the same here. A cap of 32 leaves headroom for a differently configured Dask
+deployment without imposing the clear 8-read penalty observed above. These are
+network-specific timings, not a claim about `us-west-2` performance.
 
 ## Offline benchmark
 
