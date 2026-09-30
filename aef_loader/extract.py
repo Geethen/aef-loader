@@ -285,6 +285,8 @@ async def _search_tiles(
 ) -> tuple[list[AEFTileInfo], AEFIndex]:
     if index is None:
         index = get_shared_index(source)
+    if not years:
+        return [], index
     await ensure_index_loaded(index)
     if bounds_wgs84 is None:
         return [], index
@@ -399,7 +401,7 @@ def _points_frame(
     )
     head = pd.DataFrame(
         {
-            "point_id": np.repeat(np.array(ids, dtype=object), ny) if n else [],
+            "point_id": pd.Series(np.array(ids, dtype=object)).repeat(ny).reset_index(drop=True),
             "year": np.tile(np.array(years, dtype="int64"), n),
             "x": np.repeat(x, ny),
             "y": np.repeat(y, ny),
@@ -690,7 +692,7 @@ def _zonal_from_plan(
     n = len(keys)
     head = pd.DataFrame(
         {
-            "polygon_id": np.repeat(np.array(ids, dtype=object), len(years)) if n else [],
+            "polygon_id": pd.Series(np.array(ids, dtype=object)).repeat(len(years)).reset_index(drop=True),
             "year": np.tile(np.array(years, dtype="int64"), len(ids)),
             "n_pixels": np.array(rows_n, dtype="int64"),
         }
