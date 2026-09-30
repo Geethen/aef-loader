@@ -203,3 +203,25 @@ def test_exact_fetches_geom_column_once_and_caches(monkeypatch, tmp_path):
     fresh = AEFIndex(source=DataSource.SOURCE_COOP, cache_dir=tmp_path)
     fresh.load()
     assert [t.id for t in fresh.search(bbox=aoi, exact=True)] == truth
+
+
+@pytest.mark.parametrize(
+    "text,code", [("EPSG:32633", 32633), ("epsg:32633", 32633), ("32633", 32633)]
+)
+def test_parse_epsg_accepts_common_forms(text, code):
+    assert index_module._parse_epsg(text) == code
+
+
+@pytest.mark.parametrize("text", ["WGS84", "EPSG:", "utm33", ""])
+def test_parse_epsg_rejects_unknown(text):
+    with pytest.raises(ValueError, match="CRS"):
+        index_module._parse_epsg(text)
+
+
+def test_search_raises_on_unparseable_crs():
+    df, _ = _records(3)
+    df["crs"] = "WGS84"
+    index = AEFIndex(source=DataSource.SOURCE_COOP)
+    index._df = df
+    with pytest.raises(ValueError, match="CRS"):
+        index.search()

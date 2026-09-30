@@ -512,11 +512,28 @@ class VirtualTiffReader:
         call_started = perf_counter()
         self._stats["open_calls"] += 1
 
-        # Group tiles by UTM zone
-        tiles_by_zone: dict[str, list[AEFTileInfo]] = defaultdict(list)
+        # Group tiles by (UTM zone label, CRS) so tiles in different CRSs are
+        # never mosaicked together.
+        groups: dict[tuple[str | None, int], list[AEFTileInfo]] = defaultdict(list)
         for tile in tiles:
-            zone = tile.utm_zone or "unknown"
-            tiles_by_zone[zone].append(tile)
+            groups[(tile.utm_zone or None, tile.crs_epsg)].append(tile)
+
+        crs_by_label: dict[str, set[int]] = defaultdict(set)
+        for label, crs_epsg in groups:
+            if label is not None:
+                crs_by_label[label].add(crs_epsg)
+        for label, crs_set in crs_by_label.items():
+            if len(crs_set) > 1:
+                raise ValueError(
+                    f"UTM zone {label!r} has tiles in multiple CRSs: "
+                    f"{sorted(crs_set)}"
+                )
+
+        # Child name is the zone label, or EPSG<code> for tiles without one.
+        tiles_by_zone: dict[str, list[AEFTileInfo]] = {
+            (label if label is not None else f"EPSG{crs_epsg}"): group_tiles
+            for (label, crs_epsg), group_tiles in groups.items()
+        }
 
         logger.info(
             f"Loading {len(tiles)} tiles across {len(tiles_by_zone)} UTM zones: "

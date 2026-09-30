@@ -72,6 +72,17 @@ def _default_cache_dir() -> Path:
         return Path.home() / ".cache" / "aef-loader"
 
 
+def _parse_epsg(crs: object) -> int:
+    """EPSG code from ``"EPSG:32633"``, ``"epsg:32633"`` or bare ``"32633"``."""
+    text = str(crs).strip()
+    code = text.split(":", 1)[1] if text.upper().startswith("EPSG:") else text
+    if not code.isdigit():
+        raise ValueError(
+            f"unrecognised CRS {crs!r} in index; expected 'EPSG:<code>' or '<code>'"
+        )
+    return int(code)
+
+
 class _ObstoreRangeFile(io.RawIOBase):
     """Read-only seekable file over an obstore object, using ranged reads.
 
@@ -502,7 +513,6 @@ class AEFIndex:
 
         tiles: list[AEFTileInfo] = []
         for row in gdf.itertuples(index=True, name=None):
-            crs = str(value(row, "crs"))
             tiles.append(
                 AEFTileInfo(
                     id=str(value(row, "fid") if has_fid else row[0]),
@@ -514,7 +524,7 @@ class AEFIndex:
                         value(row, "wgs84_east"),
                         value(row, "wgs84_north"),
                     ),
-                    crs_epsg=int(crs.split(":", 1)[1]) if ":" in crs else 4326,
+                    crs_epsg=_parse_epsg(value(row, "crs")),
                     utm_zone=value(row, "utm_zone") if has_utm_zone else None,
                     utm_bounds=(
                         (
