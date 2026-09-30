@@ -27,6 +27,8 @@ Environment: pixi, conda-forge Python 3.12. The packages were virtual-tiff 0.5.0
 
 **Fetch time** is measured from the moment the chip is requested until a NumPy array is in memory. It starts after Earth Engine is initialized, or after the AEF index is loaded and queried. The figures are the median and range over 5 runs, in seconds.
 
+*Note on instrumentation: Recent updates added `obstore_requests`, `obstore_bytes`, and `peak_rss_bytes` to the raw JSON results, exactly tracking object-store HTTP reads and peak worker memory footprint. Source Cooperative wall time is now strictly partitioned into `open_s`, `build_s` (Dask graph generation), and `read_s` (computation and network I/O).*
+
 | Chip | Method | Payload | Fetch | Open (header/manifest) | Read (pixels) |
 |---|---|---:|---:|---:|---:|
 | 256 × 256 × 64 | geedim | 16.8 MB float32 | **6.95** (5.89–7.67) | n/a | n/a |
