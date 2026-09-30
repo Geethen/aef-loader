@@ -89,16 +89,25 @@ def _get_affine_from_model_pixel_scale_and_tiepoint(
 
     Args:
         pixel_scale: the ModelPixelScale tag - 3 values representing scale factor of x, y, and z
-        tiepoint: the ModelTiepointTag - 6 values representing each of the tiepoints
+        tiepoint: the ModelTiepointTag - 6 values (I, J, K, X, Y, Z) tying raster
+            point (I, J) to model point (X, Y)
 
     Returns:
-        An affine transform calculated from these values.
-    """
-    sx, sy, _ = pixel_scale
-    x, y = tiepoint[3], tiepoint[4]
+        An affine transform calculated from these values. GeoTIFF pixel scales
+        are positive magnitudes and raster rows run downward, so the y scale is
+        negated (north-up image).
 
-    # TODO: validate the positive sy is correct, as I believe all the AEF images are bottom up
-    return Affine(sx, 0, x, 0, sy, y)
+    Raises:
+        ValueError: if the tiepoint is missing or has fewer than 6 values.
+    """
+    if tiepoint is None or len(tiepoint) < 6:
+        raise ValueError(
+            f"model_tiepoint must have 6 values (I, J, K, X, Y, Z), got {tiepoint!r}"
+        )
+    sx, sy, _ = pixel_scale
+    i, j, x, y = tiepoint[0], tiepoint[1], tiepoint[3], tiepoint[4]
+
+    return Affine(sx, 0, x - i * sx, 0, -sy, y + j * sy)
 
 
 def _get_affine_from_model_transform(model_transform: tuple[float, ...]) -> Affine:
@@ -124,8 +133,9 @@ def _get_geobox_from_dataset(ds: xr.Dataset, crs: str) -> GeoBox:
     """Extract GeoBox from dataset using the model_transformation or model_pixel_scale attribute if available.
 
     The model_transformation is a 4x4 matrix from the GeoTIFF that defines the
-    affine transformation from pixel coordinates to CRS coordinates. This properly
-    handles images stored bottom-up (positive y scale).
+    affine transformation from pixel coordinates to CRS coordinates. It is
+    preferred when present; otherwise the transform is built from
+    model_pixel_scale and model_tiepoint.
 
     Args:
         ds: Dataset with model_transformation in data variable attrs
@@ -146,12 +156,12 @@ def _get_geobox_from_dataset(ds: xr.Dataset, crs: str) -> GeoBox:
             "Dataset missing model_pixel_scale or model_transformation attribute"
         )
 
-    if "model_pixel_scale" in attrs:
-        affine = _get_affine_from_model_pixel_scale_and_tiepoint(
-            attrs["model_pixel_scale"], attrs.get("model_tiepoint", [0, 0, 0, 0, 0, 0])
-        )
-    else:
+    if "model_transformation" in attrs:
         affine = _get_affine_from_model_transform(attrs["model_transformation"])
+    else:
+        affine = _get_affine_from_model_pixel_scale_and_tiepoint(
+            attrs["model_pixel_scale"], attrs.get("model_tiepoint")
+        )
 
     return GeoBox(shape=(height, width), affine=affine, crs=crs)
 
