@@ -20,6 +20,7 @@ works on it unchanged.
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Iterable
 
 import numpy as np
@@ -65,6 +66,37 @@ def _to_wgs84(bbox, bbox_crs: str) -> tuple[float, float, float, float]:
     return t.transform_bounds(*bbox, densify_pts=21)
 
 
+def _normalise_years(years: int | Iterable[int] | tuple[int, int]) -> list[int]:
+    """Sorted list of years: int -> [int]; 2-tuple -> inclusive range; else list."""
+    if isinstance(years, int):
+        return [int(years)]
+    if isinstance(years, tuple) and len(years) == 2:
+        return list(range(int(years[0]), int(years[1]) + 1))
+    return sorted({int(y) for y in years})
+
+
+def _select_years(
+    ds: xr.Dataset, sel: list[int], group_name: str
+) -> tuple[xr.Dataset | None, list[int]]:
+    """Select ``sel`` years from ``ds``.
+
+    Returns ``(None, available_years)`` when none of the years exist in this
+    zone, so the caller can skip it (coverage may differ between zones) and
+    raise only if no zone has data. Warns when some requested years are missing.
+    """
+    available = sorted(set(ds["time"].values.tolist()))
+    present = [y for y in sel if y in available]
+    missing = [y for y in sel if y not in available]
+    if not present:
+        return None, available
+    if missing:
+        warnings.warn(
+            f"Years {missing} are not present in {group_name} and were skipped",
+            stacklevel=3,
+        )
+    return ds.sel(time=present), available
+
+
 def open_tessera(
     bbox: tuple[float, float, float, float],
     bbox_crs: str = "EPSG:4326",
@@ -106,10 +138,13 @@ def open_tessera(
     wgs = _to_wgs84(bbox, bbox_crs)
     zone_list = sorted(zones) if zones is not None else _candidate_zones(wgs)
     chunks = chunks or {"time": 1, "band": -1, "y": 1024, "x": 1024}
+    # Normalise once: ``years`` may be a one-shot iterator that every zone reads.
+    sel = _normalise_years(years) if years is not None else None
 
     from pyproj import Transformer
 
     zone_datasets: dict[str, xr.Dataset] = {}
+    years_by_zone: dict[str, list[int]] = {}  # zones skipped for lack of years
     for zone in zone_list:
         group_name = f"utm{zone:02d}"
         if group_name not in root:
@@ -145,14 +180,11 @@ def open_tessera(
             x=c + a * (np.arange(col0, col1) + 0.5),
             y=f + e * (np.arange(row0, row1) + 0.5),
         )
-        if years is not None:
-            if isinstance(years, int):
-                sel = [years]
-            elif isinstance(years, tuple) and len(years) == 2:
-                sel = list(range(years[0], years[1] + 1))
-            else:
-                sel = list(years)
-            ds = ds.sel(time=[t for t in sel if t in set(ds["time"].values.tolist())])
+        if sel is not None:
+            ds, available = _select_years(ds, sel, group_name)
+            if ds is None:
+                years_by_zone[group_name] = available
+                continue
 
         keep = ["embeddings", "scales"] + (list(_QUALITY_VARS) if include_quality else [])
         ds = ds[[v for v in keep if v in ds.data_vars]]
@@ -168,7 +200,15 @@ def open_tessera(
         zone_datasets[f"{zone}N"] = ds
 
     if not zone_datasets:
-        raise ValueError("No TESSERA data found for the requested bbox and zones")
+        if years_by_zone:
+            raise ValueError(
+                f"None of the requested years {sel} exist for bbox {bbox} "
+                f"(bbox_crs={bbox_crs!r}); available years by zone: {years_by_zone}"
+            )
+        raise ValueError(
+            f"No TESSERA data found for bbox {bbox} (bbox_crs={bbox_crs!r}) "
+            f"in zones {zone_list}"
+        )
 
     tree = DataTree.from_dict({f"/{k}": v for k, v in zone_datasets.items()})
     tree.attrs["zones"] = list(zone_datasets)
