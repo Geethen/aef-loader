@@ -14,8 +14,9 @@ import io
 import json
 import logging
 import os
+import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import obstore as obs
@@ -40,6 +41,8 @@ if TYPE_CHECKING:
     import pyarrow as pa
 
 logger = logging.getLogger(__name__)
+
+_YEAR_RE = re.compile(r"^\d{4}(-\d{2}-\d{2})?$")
 
 # Columns needed to search and build AEFTileInfo (the ``geom`` column is ~80% of
 # the file and is only fetched for ``exact=True``).
@@ -387,20 +390,50 @@ class AEFIndex:
         self._geoms = shapely.from_wkb(wkb)
         return self._geoms
 
-    def _get_start_and_end_year(self, years: int | DateRange) -> tuple[int, int]:
-        if isinstance(years, int):
-            start_year = end_year = years
-            return start_year, end_year
+    @staticmethod
+    def _as_year(value: Any) -> int:
+        """``2024``, ``np.int64(2024)``, ``"2024"`` or ``"2024-05-10"`` -> ``2024``."""
+        if isinstance(value, str):
+            if not _YEAR_RE.match(value.strip()):
+                raise ValueError(
+                    f"invalid year string: {value!r} (expected 'YYYY' or 'YYYY-MM-DD')"
+                )
+            return int(value.strip()[:4])
+        if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+            raise ValueError(f"invalid year: {value!r}")
+        return int(value)
 
-        start_year, end_year = years
+    def _selected_years(self, years: Any) -> list[int]:
+        """Years selected by ``years``, using the same rules as the extract API.
 
-        # Handle string dates
-        if isinstance(start_year, str):
-            start_year = int(start_year[:4])
-        if isinstance(end_year, str):
-            end_year = int(end_year[:4])
+        A single year (int, numpy integer or ``"YYYY[-MM-DD]"`` string); a 2-tuple
+        ``(start, end)`` for an inclusive range; or any other iterable as an
+        explicit list of years.
+        """
+        if isinstance(years, (int, np.integer, str)):
+            return [self._as_year(years)]
+        if isinstance(years, tuple):
+            if len(years) != 2:
+                raise ValueError(
+                    f"years tuple must be (start, end), got length {len(years)}; "
+                    "pass a list for an explicit set of years"
+                )
+            start, end = self._as_year(years[0]), self._as_year(years[1])
+            if end < start:
+                raise ValueError(f"years range {years!r} ends before it starts")
+            return list(range(start, end + 1))
+        try:
+            selected = sorted({self._as_year(y) for y in years})
+        except TypeError:
+            raise ValueError(f"invalid years: {years!r}") from None
+        if not selected:
+            raise ValueError("years must not be empty")
+        return selected
 
-        return start_year, end_year
+    def _get_start_and_end_year(self, years: Any) -> tuple[int, int]:
+        """Inclusive (first, last) year selected by ``years``."""
+        selected = self._selected_years(years)
+        return selected[0], selected[-1]
 
     @staticmethod
     def _bbox_to_wgs84(bbox: BoundingBox, bbox_crs: str) -> BoundingBox:
@@ -424,7 +457,7 @@ class AEFIndex:
     async def query(
         self,
         bbox: BoundingBox | None = None,
-        years: int | DateRange | None = None,
+        years: int | str | DateRange | list[int] | None = None,
         limit: int | None = None,
         bbox_crs: str = "EPSG:4326",
         exact: bool = False,
@@ -435,7 +468,7 @@ class AEFIndex:
     def search(
         self,
         bbox: BoundingBox | None = None,
-        years: int | DateRange | None = None,
+        years: int | str | DateRange | list[int] | None = None,
         limit: int | None = None,
         bbox_crs: str = "EPSG:4326",
         exact: bool = False,
@@ -488,9 +521,8 @@ class AEFIndex:
             logger.info(f"After bbox filter: {int(keep.sum())} tiles")
 
         if years is not None:
-            start_year, end_year = self._get_start_and_end_year(years)
             year = df["year"].to_numpy()
-            keep &= (year >= start_year) & (year <= end_year)
+            keep &= np.isin(year, self._selected_years(years))
             logger.info(f"After year filter: {int(keep.sum())} tiles")
 
         positions = np.flatnonzero(keep)  # ascending == file row order

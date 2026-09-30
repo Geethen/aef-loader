@@ -290,3 +290,39 @@ def test_version_comes_from_metadata_with_fallback(monkeypatch):
     finally:
         monkeypatch.undo()
         importlib.reload(aef_loader)
+
+def test_search_years_semantics():
+    df, _ = _records(5)
+    # The records have years 2020, 2021, 2022, 2020, 2021.
+    index = AEFIndex(source=DataSource.SOURCE_COOP)
+    index._df = df
+    
+    # int
+    assert len(index.search(years=2021)) == 2
+    # string
+    assert len(index.search(years="2021")) == 2
+    assert len(index.search(years="2021-05-10")) == 2
+    # numpy integer (e.g. a year taken from a DataFrame)
+    import numpy as np
+
+    assert len(index.search(years=np.int64(2021))) == 2
+    # tuple = inclusive range
+    assert len(index.search(years=(2020, 2021))) == 4
+    assert len(index.search(years=("2020", "2021-12-31"))) == 4
+    # list / other iterable = explicit set (same rule as extract_points), and
+    # it must keep working because read_chips passes user years straight through
+    assert len(index.search(years=[2020, 2022])) == 3
+    assert len(index.search(years=[2021])) == 2
+
+    with pytest.raises(ValueError, match="invalid year string"):
+        index.search(years="abcd")
+    with pytest.raises(ValueError, match="invalid year string"):
+        index.search(years="2024abc")
+    with pytest.raises(ValueError, match="invalid year string"):
+        index.search(years=("2020", "xyz"))
+    with pytest.raises(ValueError, match=r"\(start, end\)"):
+        index.search(years=(2020,))
+    with pytest.raises(ValueError, match="ends before it starts"):
+        index.search(years=(2022, 2021))
+    with pytest.raises(ValueError, match="must not be empty"):
+        index.search(years=[])
