@@ -82,6 +82,44 @@ async def main():
 asyncio.run(main())
 ```
 
+### One-liner
+
+```python
+from aef_loader import open_aef
+
+tree = open_aef((5.55, 58.65, 5.65, 58.75), 2024)   # DataTree, one group per UTM zone
+```
+
+`open_aef` downloads/loads the index (shared per source, so repeated calls are cheap), searches it
+and opens the tiles lazily. It is notebook-safe: with no running event loop it uses `asyncio.run`,
+and inside Jupyter it runs the work on a fresh loop in a worker thread, so it never raises
+"asyncio.run() cannot be called from a running event loop". In a notebook you can equally write
+`tree = await aopen_aef(bbox, 2024)`.
+
+## Extracting embeddings
+
+Points and polygons are sampled on each tile's native grid: nothing is reprojected or mosaicked,
+and values are dequantized before any averaging (the code-to-value map is nonlinear).
+
+```python
+from aef_loader import extract_points, extract_zonal
+from shapely.geometry import box
+
+pts = extract_points([(5.6, 58.7), (5.61, 58.705)], 2024)          # one row per (point, year)
+zon = extract_zonal([box(5.600, 58.700, 5.603, 58.702)], (2023, 2024), stat="mean")
+```
+
+- `extract_points` returns `point_id, year, x, y, tile_id, utm_zone` plus `A00..A63` (float32, NaN
+  for nodata; `dequantize=False` gives the int8 codes with `-128`). Points outside every tile, or in
+  a year without a tile, get NaN rows with `tile_id=None`. A point exactly on a pixel edge belongs to
+  the pixel to its right/below. Each tile is opened once and all points are read with one pointwise
+  selection and a single `dask.compute`.
+- `extract_zonal` returns `polygon_id, year, n_pixels` plus the 64 statistic columns
+  (`stat` = `mean`, `median`, `std`, `min`, `max` or `count`). Polygons that span tiles or UTM zones
+  are combined from per-tile sums and counts, not means of means; pixels covered by two zones are
+  counted once. Polygons can be shapely geometries or a GeoDataFrame (`crs=` for other CRSs).
+- `aextract_points` and `aextract_zonal` are the async twins (use them with `await` in notebooks).
+
 ## TESSERA embeddings
 
 Besides AEF, `open_tessera` reads [TESSERA](https://geotessera.org) embeddings (128 bands, 10 m, yearly 2017–2025)
