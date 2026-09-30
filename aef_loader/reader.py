@@ -410,9 +410,13 @@ class VirtualTiffReader:
             BlockCache(block_cache_bytes) if block_cache_bytes else None
         )
         self._stores: dict[str, object] = {}  # Cache stores by (protocol, bucket)
+        self._limited_stores: dict[str, object] = {}  # Same stores without the block cache
         self._registry = None
+        self._parse_registry = None
         self.memory_manifest_cache_size = max(0, memory_manifest_cache_size)
         self._manifest_cache: OrderedDict[tuple[str, int], object] = OrderedDict()
+        # (ETag, size) each remembered manifest was built from, when known.
+        self._manifest_identity: dict[tuple[str, int], tuple | None] = {}
         self._stats: dict[str, int | float] = {
             "open_calls": 0,
             "tiles_opened": 0,
@@ -434,21 +438,43 @@ class VirtualTiffReader:
             stats.update(self._read_stats.snapshot())
         return stats
 
-    def _remember_manifest(self, key: tuple[str, int], manifest_store) -> None:
+    def _remember_manifest(
+        self, key: tuple[str, int], manifest_store, identity: tuple | None = None
+    ) -> None:
         if self.memory_manifest_cache_size == 0:
             return
         self._manifest_cache[key] = manifest_store
+        self._manifest_identity[key] = identity
         self._manifest_cache.move_to_end(key)
         while len(self._manifest_cache) > self.memory_manifest_cache_size:
-            self._manifest_cache.popitem(last=False)
+            evicted, _ = self._manifest_cache.popitem(last=False)
+            self._manifest_identity.pop(evicted, None)
+
+    @staticmethod
+    def _object_identity(meta) -> tuple | None:
+        """Version of an object from its head/cached metadata: ``(e_tag, size)``."""
+        if not meta:
+            return None
+        return (meta.get("e_tag"), meta.get("size"))
+
+    def _discard_stale(self, file_url: str, manifest_key: tuple[str, int]) -> None:
+        """Forget everything derived from an object that has been replaced."""
+        self._stats["manifest_stale"] = self._stats.get("manifest_stale", 0) + 1
+        self._manifest_cache.pop(manifest_key, None)
+        self._manifest_identity.pop(manifest_key, None)
+        if self._block_cache is not None:
+            self._block_cache.evict_url(file_url)
 
     async def __aenter__(self) -> VirtualTiffReader:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self._stores.clear()
+        self._limited_stores.clear()
         self._registry = None
+        self._parse_registry = None
         self._manifest_cache.clear()
+        self._manifest_identity.clear()
         if self._block_cache is not None:
             self._block_cache.clear()
 
@@ -473,20 +499,28 @@ class VirtualTiffReader:
             skip_signature=True,  # Source Coop is public, no auth needed
         )
 
-    def _get_store(self, protocol: PathProtocol, bucket: str):
-        """Get or create an obstore for a bucket based on protocol."""
+    def _get_limited_store(self, protocol: PathProtocol, bucket: str):
+        """The bucket's store behind the read limiter (if any) but without the block cache."""
         store_key = f"{protocol}://{bucket}"
-        if store_key not in self._stores:
+        if store_key not in self._limited_stores:
             if protocol == "gs":
                 store = self._get_gcs_store(bucket)
             elif protocol == "s3":
                 store = self._get_s3_store(bucket)
             else:
                 raise ValueError(f"Unsupported protocol: {protocol}")
-            # Limiter innermost, cache outermost: a cache hit never waits for a
-            # read slot or counts as a physical read.
             if self._read_limiter is not None:
                 store = ReadLimitedStore(store, self._read_limiter, self._read_stats)
+            self._limited_stores[store_key] = store
+        return self._limited_stores[store_key]
+
+    def _get_store(self, protocol: PathProtocol, bucket: str):
+        """Get or create an obstore for a bucket based on protocol."""
+        store_key = f"{protocol}://{bucket}"
+        if store_key not in self._stores:
+            # Limiter innermost, cache outermost: a cache hit never waits for a
+            # read slot or counts as a physical read.
+            store = self._get_limited_store(protocol, bucket)
             self._stores[store_key] = self._with_block_cache(store, store_key)
         return self._stores[store_key]
 
@@ -506,6 +540,19 @@ class VirtualTiffReader:
         self._registry.register(bucket_url, store)
 
         return self._registry
+
+    def _get_parse_registry(self, protocol: PathProtocol, bucket: str):
+        """Registry for header parsing: never the block cache.
+
+        Header bytes must always come from the object itself, or a replaced
+        object would be parsed from its previous version's cached header.
+        """
+        if self._parse_registry is None:
+            self._parse_registry = ObjectStoreRegistry()
+        self._parse_registry.register(
+            f"{protocol}://{bucket}/", self._get_limited_store(protocol, bucket)
+        )
+        return self._parse_registry
 
     async def open_tiles_by_zone(
         self,
@@ -701,15 +748,18 @@ class VirtualTiffReader:
             # just falls through to a normal parse, so behaviour is unchanged when
             # no cache_dir is set or the cache is cold/corrupt.
             manifest_key = (file_url, ifd)
+            identity: tuple | None = None
             manifest_store = self._manifest_cache.get(manifest_key)
             if manifest_store is not None:
                 self._manifest_cache.move_to_end(manifest_key)
                 self._stats["memory_manifest_hits"] += 1
+                identity = self._manifest_identity.get(manifest_key)
             elif cache_dir is not None:
                 manifest_store, cached_meta = await asyncio.to_thread(
                     load_cached_manifest, cache_dir, file_url, ifd, registry
                 )
                 if manifest_store is not None:
+                    identity = self._object_identity(cached_meta)
                     if self.manifest_validation == "head":
                         store_obj = self._get_store(protocol, bucket)
                         try:
@@ -720,7 +770,7 @@ class VirtualTiffReader:
                                 cached_meta.get("size") != head_meta.get("size")
                             ):
                                 logger.info("manifest cache %s stale: ETag or size mismatch", file_url)
-                                self._stats["manifest_stale"] = self._stats.get("manifest_stale", 0) + 1
+                                self._discard_stale(file_url, manifest_key)
                                 manifest_store = None
                         except Exception as exc:
                             logger.warning("could not validate manifest for %s: %s", file_url, exc)
@@ -729,22 +779,36 @@ class VirtualTiffReader:
                         self._stats["disk_manifest_hits"] += 1
             if manifest_store is None:
                 manifest_store = await asyncio.to_thread(
-                    parser, url=file_url, registry=registry
+                    parser,
+                    url=file_url,
+                    registry=self._get_parse_registry(protocol, bucket),
                 )
+                # The parse read the header straight from the object; chunk reads
+                # go through the reader's (possibly caching) registry.
+                manifest_store._registry = registry
                 self._stats["manifest_parses"] += 1
-                if cache_dir is not None:
+                if cache_dir is not None or self._block_cache is not None:
                     store_obj = self._get_store(protocol, bucket)
                     head_meta = None
                     try:
-                        head_meta = await store_obj.head_async(key)
-                        if head_meta and head_meta.get("last_modified"):
-                            head_meta["last_modified"] = head_meta["last_modified"].isoformat()
+                        head_meta = dict(await store_obj.head_async(key))
                     except Exception as exc:
                         logger.warning("could not get object metadata for %s: %s", file_url, exc)
-                    await asyncio.to_thread(
-                        save_manifest, cache_dir, file_url, ifd, manifest_store, head_meta
-                    )
-            self._remember_manifest(manifest_key, manifest_store)
+                    identity = self._object_identity(head_meta)
+                    if cache_dir is not None:
+                        saved_meta = head_meta
+                        if saved_meta and saved_meta.get("last_modified"):
+                            saved_meta = {
+                                **saved_meta,
+                                "last_modified": saved_meta["last_modified"].isoformat(),
+                            }
+                        await asyncio.to_thread(
+                            save_manifest, cache_dir, file_url, ifd, manifest_store, saved_meta
+                        )
+            self._remember_manifest(manifest_key, manifest_store, identity)
+            if self._block_cache is not None:
+                # A new identity for this object drops blocks of its old version.
+                self._block_cache.set_identity(file_url, identity)
 
             # Resolve the chunks argument. chunks=None asks open_zarr for numpy-
             # backed (non-dask) arrays; that is a footgun here because the very
