@@ -564,6 +564,7 @@ class VirtualTiffReader:
         bbox_crs: str = "EPSG:4326",
         buffer_pixels: int = 0,
         max_concurrency: int | None = 16,
+        semaphore: asyncio.Semaphore | None = None,
     ) -> DataTree:
         """
         Open tiles and organize them by UTM zone in a DataTree.
@@ -590,6 +591,9 @@ class VirtualTiffReader:
             buffer_pixels: Extra source pixels retained around bbox.
             max_concurrency: Shared limit for tile header/open work across every
                 zone. Set to None for unbounded concurrency.
+            semaphore: Optional semaphore bounding tile opens, shared with other
+                concurrent calls so their combined opens stay within one limit.
+                When given, ``max_concurrency`` is ignored.
 
         Returns:
             DataTree with structure:
@@ -648,9 +652,8 @@ class VirtualTiffReader:
             f"{list(tiles_by_zone.keys())}"
         )
 
-        semaphore = (
-            asyncio.Semaphore(max_concurrency) if max_concurrency is not None else None
-        )
+        if semaphore is None and max_concurrency is not None:
+            semaphore = asyncio.Semaphore(max_concurrency)
 
         async def process_zone(
             zone: str, zone_tiles: list[AEFTileInfo]

@@ -355,8 +355,8 @@ async def read_chips(
         reader: Reader to use. Pass one built with ``block_cache_bytes`` to reuse
             blocks across calls. When None a temporary reader is used.
         crs: CRS of the point coordinates.
-        max_concurrency: Bound on concurrent tile opens; group computes run at
-            most ``min(max_concurrency, 4)`` at a time.
+        max_concurrency: Bound on concurrent tile opens across all groups; group
+            computes run at most ``min(max_concurrency, 4)`` at a time.
     """
     if size < 1:
         raise ValueError("size must be a positive integer")
@@ -401,12 +401,14 @@ async def read_chips(
     nodata = reader.collection.nodata
     nodata = _DEFAULT_NODATA if nodata is None else nodata
     compute_slots = asyncio.Semaphore(min(max_concurrency, 4))
+    # One limit on tile opens across every group, not one per group.
+    open_slots = asyncio.Semaphore(max_concurrency)
     chips: list[Chip | None] = [None] * len(resolved)
 
     async def run_group(members: list[int]) -> None:
         tiles = list({t.path: t for i in members for t in resolved[i].tiles}.values())
         tree = await reader.open_tiles_by_zone(
-            tiles, chunks="native", max_concurrency=max_concurrency
+            tiles, chunks="native", semaphore=open_slots
         )
         (zone,) = tree.children
         da = tree[zone].ds["embeddings"]
