@@ -142,6 +142,8 @@ async def run_aef(size: int, *, plus: bool, manifest_dir: str | None,
     async with reader_ctx as reader:
         if plus:
             # Shrink by 1 m so the half-pixel margin does not add an edge row.
+            # A separate fix is making the reader's bbox crop exact; remove this
+            # shrink once that lands.
             inner = (minx + 1, miny + 1, maxx - 1, maxy - 1)
             tree = await reader.open_tiles_by_zone(
                 tiles, chunks=chunks, bbox=inner, bbox_crs=CRS
@@ -217,102 +219,201 @@ def dequantize(codes: np.ndarray) -> np.ndarray:
     return out
 
 
-def compare(upstream_path, plus_path, gee_path) -> dict:
-    """Band-by-band integrity check on memory-mapped reference arrays."""
-    upstream = np.load(upstream_path, mmap_mode="r")
-    plus = np.load(plus_path, mmap_mode="r")
-    gee = np.load(gee_path, mmap_mode="r")
-    equal = upstream.shape == plus.shape
-    max_diff, diff_sum, n = 0.0, 0.0, 0
-    for b in range(upstream.shape[0]):
-        u = np.asarray(upstream[b])
-        equal = equal and np.array_equal(u, plus[b])
-        deq, g = dequantize(u), np.asarray(gee[b])
-        both = np.isfinite(deq) & np.isfinite(g)
-        d = np.abs(deq[both] - g[both])
-        if d.size:
-            max_diff = max(max_diff, float(d.max()))
-            diff_sum += float(d.sum(dtype=np.float64))
-            n += d.size
-    return {
-        "upstream_equals_plus": bool(equal),
-        "shapes": [list(upstream.shape), list(plus.shape), list(gee.shape)],
-        "gee_vs_dequantized_max_abs_diff": max_diff,
-        "gee_vs_dequantized_mean_abs_diff": diff_sum / max(n, 1),
+def arrays_equal(left_path: str, right_path: str) -> bool:
+    """Compare memory-mapped arrays one band at a time."""
+    left = np.load(left_path, mmap_mode="r")
+    right = np.load(right_path, mmap_mode="r")
+    if left.shape != right.shape:
+        return False
+    return all(np.array_equal(left[band], right[band]) for band in range(left.shape[0]))
+
+
+def compare(upstream_path: str | None, plus_path: str | None,
+            gee_path: str | None, plus_allbands_path: str | None = None,
+            plus_native_path: str | None = None) -> dict:
+    """Run available integrity checks on memory-mapped reference arrays.
+
+    ``plus_path`` is the warm/native reference.  Other Source Cooperative
+    variants must be byte-identical to it; Earth Engine is compared to it when
+    available, otherwise to upstream.
+    """
+    paths = {
+        "upstream": upstream_path,
+        "plus": plus_native_path,
+        "plus_warm": plus_path,
+        "geedim": gee_path,
+        "plus_warm_allbands": plus_allbands_path,
     }
+    result = {"shapes": {}, "integrity_skipped": [], "integrity_failures": []}
+    for method, path in paths.items():
+        if path:
+            result["shapes"][method] = list(np.load(path, mmap_mode="r").shape)
+
+    if upstream_path and plus_path:
+        source_equal = arrays_equal(upstream_path, plus_path)
+        # Retain this established field name: the plus reference is plus_warm.
+        result["upstream_equals_plus"] = source_equal
+        if not source_equal:
+            result["integrity_failures"].append(
+                "upstream and plus_warm are not bit-identical"
+            )
+    else:
+        result["integrity_skipped"].append(
+            "upstream_vs_plus_warm (requires upstream and plus_warm)"
+        )
+
+    if plus_native_path and plus_path:
+        native_equal = arrays_equal(plus_native_path, plus_path)
+        result["plus_equals_plus_warm"] = native_equal
+        if not native_equal:
+            result["integrity_failures"].append(
+                "plus and plus_warm are not bit-identical"
+            )
+    else:
+        result["integrity_skipped"].append(
+            "plus_vs_plus_warm (requires plus and plus_warm)"
+        )
+
+    if plus_allbands_path and plus_path:
+        allbands_equal = arrays_equal(
+            plus_allbands_path, plus_path
+        )
+        result["plus_warm_allbands_equals_plus_warm"] = allbands_equal
+        if not allbands_equal:
+            result["integrity_failures"].append(
+                "plus_warm_allbands and plus_warm are not bit-identical"
+            )
+    else:
+        result["integrity_skipped"].append(
+            "plus_warm_allbands_vs_plus_warm (requires plus_warm_allbands and plus_warm)"
+        )
+
+    gee_reference_path = plus_path or upstream_path
+    if gee_path and gee_reference_path:
+        source = np.load(gee_reference_path, mmap_mode="r")
+        gee = np.load(gee_path, mmap_mode="r")
+        result["gee_reference_method"] = "plus_warm" if plus_path else "upstream"
+        if source.shape != gee.shape:
+            result["integrity_failures"].append(
+                "geedim and the Source Cooperative reference have different shapes"
+            )
+        else:
+            max_diff, diff_sum, finite_overlap, nodata_mismatch = 0.0, 0.0, 0, 0
+            for band in range(source.shape[0]):
+                deq = dequantize(np.asarray(source[band]))
+                g = np.asarray(gee[band])
+                source_finite = np.isfinite(deq)
+                gee_finite = np.isfinite(g)
+                nodata_mismatch += int(np.logical_xor(source_finite, gee_finite).sum())
+                both = source_finite & gee_finite
+                d = np.abs(deq[both] - g[both])
+                if d.size:
+                    max_diff = max(max_diff, float(d.max()))
+                    diff_sum += float(d.sum(dtype=np.float64))
+                    finite_overlap += d.size
+            result["gee_vs_dequantized_finite_overlap_pixels"] = finite_overlap
+            result["gee_vs_dequantized_nodata_mask_mismatch_pixels"] = nodata_mismatch
+            result["gee_vs_dequantized_finite_overlap_empty"] = finite_overlap == 0
+            if nodata_mismatch:
+                result["integrity_failures"].append(
+                    "Earth Engine and the Source Cooperative reference have different nodata masks"
+                )
+            if finite_overlap:
+                result["gee_vs_dequantized_max_abs_diff"] = max_diff
+                result["gee_vs_dequantized_mean_abs_diff"] = diff_sum / finite_overlap
+            else:
+                result["gee_vs_dequantized_max_abs_diff"] = None
+                result["gee_vs_dequantized_mean_abs_diff"] = None
+                result["integrity_failures"].append(
+                    "Earth Engine and the Source Cooperative reference have no finite overlap"
+                )
+    else:
+        result["integrity_skipped"].append(
+            "geedim_vs_dequantized (requires geedim and a Source Cooperative reference)"
+        )
+
+    result["integrity_status"] = "FAILED" if result["integrity_failures"] else "OK"
+    return result
 
 
-def driver(sizes, repeats, repeats_large, out_path, methods) -> None:
+def driver(sizes, repeats, repeats_large, out_path, methods, keep_workdir: bool) -> None:
     import shutil
 
     work = Path(tempfile.mkdtemp(prefix="aef-chip-bench-"))
-    base_env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
-    base_env["AEF_INDEX_DIR"] = str(work / "index")
-    base_env["CHIP_SITE"] = SITE
-    (work / "index").mkdir(parents=True)
-    # Import the fork from a local copy: importing it from a network drive adds
-    # ~8 s per process, which is a property of the drive, not the package.
-    shutil.copytree(PACKAGE_ROOT / "aef_loader", work / "fork" / "aef_loader")
-    plus_env = dict(base_env, PYTHONPATH=str(work / "fork"))
+    try:
+        base_env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+        base_env["AEF_INDEX_DIR"] = str(work / "index")
+        base_env["CHIP_SITE"] = SITE
+        (work / "index").mkdir(parents=True)
+        # Import the fork from a local copy: importing it from a network drive adds
+        # ~8 s per process, which is a property of the drive, not the package.
+        shutil.copytree(PACKAGE_ROOT / "aef_loader", work / "fork" / "aef_loader")
+        plus_env = dict(base_env, PYTHONPATH=str(work / "fork"))
 
-    # Download the shared index once (not timed per run).
-    t = perf_counter()
-    subprocess.run(
-        [sys.executable, "-c",
-         "import asyncio,os;from pathlib import Path;"
-         "from aef_loader import AEFIndex,DataSource;"
-         "i=AEFIndex(source=DataSource.SOURCE_COOP,cache_dir=Path(os.environ['AEF_INDEX_DIR']));"
-         "asyncio.run(i.download())"],
-        env=plus_env, cwd=base_env["AEF_INDEX_DIR"], check=True,
-    )
-    index_download_s = perf_counter() - t
+        # Download the shared index once (not timed per run).
+        t = perf_counter()
+        subprocess.run(
+            [sys.executable, "-c",
+             "import asyncio,os;from pathlib import Path;"
+             "from aef_loader import AEFIndex,DataSource;"
+             "i=AEFIndex(source=DataSource.SOURCE_COOP,cache_dir=Path(os.environ['AEF_INDEX_DIR']));"
+             "asyncio.run(i.download())"],
+            env=plus_env, cwd=base_env["AEF_INDEX_DIR"], check=True,
+        )
+        index_download_s = perf_counter() - t
 
-    results = []
-    for size in sizes:
-        warm_dir = str(work / f"manifests-warm-{size}")
-        # Populate the warm manifest cache (untimed) and save reference arrays.
-        ref = {}
-        refs = [(m, e) for m, e in (("plus_warm", plus_env), ("upstream", base_env), ("geedim", base_env))
-                if m in methods or m == "plus_warm" and any(x.startswith("plus") for x in methods)]
-        for method, env in refs:
-            path = str(work / f"{method}-{size}.npy")
-            spawn(method, size, env, manifest_dir=warm_dir if method == "plus_warm" else None, save=path)
-            ref[method] = path
-        for rep in range(repeats if size < 2048 else repeats_large):
-            # Rotate the order so no method always goes first.
-            order = [m for m in ("geedim", "upstream", "plus", "plus_warm", "plus_warm_allbands") if m in methods]
-            order = order[rep % len(order):] + order[:rep % len(order)]
-            for method in order:
+        results = []
+        for size in sizes:
+            warm_dir = str(work / f"manifests-warm-{size}")
+            # Save every selected method as a reference.  A warm/native plus
+            # reference is also needed to validate selected plus variants.
+            reference_methods = set(methods)
+            if any(method.startswith("plus") for method in methods):
+                reference_methods.add("plus_warm")
+            ref = {}
+            for method in ("plus_warm", "plus_warm_allbands", "plus", "upstream", "geedim"):
+                if method not in reference_methods:
+                    continue
                 env = plus_env if method.startswith("plus") else base_env
-                mdir = (warm_dir if method.startswith("plus_warm")
-                        else str(work / f"manifests-cold-{size}-{rep}") if method == "plus"
-                        else None)
-                r = spawn(method, size, env, manifest_dir=mdir)
-                r["rep"] = rep
-                print(json.dumps({k: r[k] for k in ("method", "size", "rep", "fetch_s", "process_wall_s")}), flush=True)
-                results.append(r)
+                path = str(work / f"{method}-{size}.npy")
+                spawn(method, size, env,
+                      manifest_dir=warm_dir if method.startswith("plus_warm") else None,
+                      save=path)
+                ref[method] = path
+            for rep in range(repeats if size < 2048 else repeats_large):
+                # Rotate the order so no method always goes first.
+                order = [m for m in ("geedim", "upstream", "plus", "plus_warm", "plus_warm_allbands") if m in methods]
+                order = order[rep % len(order):] + order[:rep % len(order)]
+                for method in order:
+                    env = plus_env if method.startswith("plus") else base_env
+                    mdir = (warm_dir if method.startswith("plus_warm")
+                            else str(work / f"manifests-cold-{size}-{rep}") if method == "plus"
+                            else None)
+                    r = spawn(method, size, env, manifest_dir=mdir)
+                    r["rep"] = rep
+                    print(json.dumps({k: r[k] for k in ("method", "size", "rep", "fetch_s", "process_wall_s")}), flush=True)
+                    results.append(r)
 
-        if "geedim" in ref:
-            results.append({"method": "integrity", "size": size,
-                            **compare(ref["upstream"], ref["plus_warm"], ref["geedim"])})
-        else:  # Earth Engine skipped: only the two Source Coop routes can be compared
-            a = np.load(ref["upstream"], mmap_mode="r")
-            b = np.load(ref["plus_warm"], mmap_mode="r")
-            results.append({"method": "integrity", "size": size,
-                            "upstream_equals_plus": bool(a.shape == b.shape and all(
-                                np.array_equal(a[i], b[i]) for i in range(a.shape[0]))),
-                            "shapes": [list(a.shape), list(b.shape)]})
-            del a, b
-        print(json.dumps(results[-1]), flush=True)
-        a = b = None  # release memory maps first, or Windows refuses the unlink
-        for path in ref.values():
-            Path(path).unlink()
+            results.append({
+                "method": "integrity",
+                "size": size,
+                **compare(ref.get("upstream"), ref.get("plus_warm"), ref.get("geedim"),
+                          ref.get("plus_warm_allbands"), ref.get("plus")),
+            })
+            print(json.dumps(results[-1]), flush=True)
+            for path in ref.values():
+                Path(path).unlink()
 
-        # Write after every size so a late failure keeps the earlier results.
-        payload = {"index_download_s": index_download_s, "year": YEAR, "site": SITE,
-                   "crs": CRS, "origin": [X0, Y0], "results": results}
-        Path(out_path).write_text(json.dumps(payload, indent=2))
-        print(f"wrote {out_path}", flush=True)
+            # Write after every size so a late failure keeps the earlier results.
+            payload = {"index_download_s": index_download_s, "year": YEAR, "site": SITE,
+                       "crs": CRS, "origin": [X0, Y0], "results": results}
+            Path(out_path).write_text(json.dumps(payload, indent=2))
+            print(f"wrote {out_path}", flush=True)
+    finally:
+        if keep_workdir:
+            print(f"kept benchmark workdir: {work}", flush=True)
+        else:
+            shutil.rmtree(work, ignore_errors=True)
 
 
 def main() -> None:
@@ -329,11 +430,14 @@ def main() -> None:
                         choices=["geedim", "upstream", "plus", "plus_warm", "plus_warm_allbands"],
                         help="methods to time (default: all four)")
     parser.add_argument("--out", default="chip_benchmark_results.json")
+    parser.add_argument("--keep-workdir", action="store_true",
+                        help="keep the temporary benchmark workspace for inspection")
     args = parser.parse_args()
     if args.worker:
         worker(args.worker, args.size, args.manifest_dir, args.save)
     else:
-        driver(args.sizes, args.repeats, args.repeats_large, args.out, args.methods)
+        driver(args.sizes, args.repeats, args.repeats_large, args.out, args.methods,
+               args.keep_workdir)
 
 
 if __name__ == "__main__":
