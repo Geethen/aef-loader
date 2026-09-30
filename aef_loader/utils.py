@@ -561,13 +561,16 @@ def aoi_geobox(
 ) -> GeoBox:
     """Build a target ``GeoBox`` for an AOI, snapped to a global pixel lattice.
 
-    ``GeoBox.from_bbox`` anchors the grid at the AOI's own corner, so two AOIs
-    reprojected independently (e.g. adjacent tiles, or the same area at different
-    times) land on *different* pixel grids and cannot be mosaicked without
-    resampling. Snapping the origin to integer multiples of ``resolution``
-    (anchored at 0, 0) makes every AOI at a given resolution/CRS share one grid,
-    so outputs align exactly and can be merged losslessly. This is the odc-geo
-    analogue of the lattice snap ``prep_aef_tiles.py`` applies to warped tiles.
+    An AOI-anchored grid (origin at the bbox corner) puts two AOIs reprojected
+    independently (e.g. adjacent tiles, or the same area at different times) on
+    *different* pixel grids, so they cannot be mosaicked without resampling.
+    Snapping the origin to integer multiples of ``resolution`` (anchored at
+    0, 0) makes every AOI at a given resolution/CRS share one grid, so outputs
+    align exactly and can be merged losslessly. This is the odc-geo analogue of
+    the lattice snap ``prep_aef_tiles.py`` applies to warped tiles.
+
+    Note that ``GeoBox.from_bbox`` itself snaps to the resolution lattice by
+    default (odc-geo >= 0.5), so the AOI-anchored grid needs ``tight=True``.
 
     Args:
         bbox: AOI bounds ``(minx, miny, maxx, maxy)``.
@@ -577,7 +580,8 @@ def aoi_geobox(
             reprojected (densified) to ``crs`` first. Defaults to ``crs``.
         snap: When True (default), snap the origin to the ``resolution`` lattice
             and grow the extent outward to fully cover ``bbox``. When False,
-            behaves like ``GeoBox.from_bbox`` (AOI-anchored grid).
+            the grid is AOI-anchored: its origin sits at the bbox corner
+            (``GeoBox.from_bbox(..., tight=True)``).
 
     Returns:
         A north-up ``GeoBox`` in ``crs`` at ``resolution`` covering ``bbox``.
@@ -595,7 +599,7 @@ def aoi_geobox(
 
     if not snap:
         return GeoBox.from_bbox(
-            (minx, miny, maxx, maxy), crs=crs, resolution=resolution
+            (minx, miny, maxx, maxy), crs=crs, resolution=resolution, tight=True
         )
 
     # Snap outward to the global lattice: floor the min edges, ceil the max edges.

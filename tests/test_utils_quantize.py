@@ -61,3 +61,15 @@ def test_dequantize_rejects_float_dask_input_at_call_time():
     lazy = xr.DataArray(da.from_array(np.array([0.25, 0.5], dtype=np.float32), chunks=1), dims="x")
     with pytest.raises(TypeError, match="already dequantized"):
         dequantize_aef(lazy)  # must not wait until .compute()
+
+
+def test_aoi_geobox_snap_true_uses_lattice_and_snap_false_is_aoi_anchored():
+    from aef_loader.utils import aoi_geobox
+
+    bbox = (100.3, 200.7, 150.9, 260.4)
+    snapped = aoi_geobox(bbox, "EPSG:32633", 10, snap=True)
+    assert (snapped.affine.c, snapped.affine.f) == (100.0, 270.0)
+
+    anchored = aoi_geobox(bbox, "EPSG:32633", 10, snap=False)
+    assert anchored.affine.c == 100.3
+    assert anchored.affine.f == 260.4
