@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
+import math
 from collections import OrderedDict, defaultdict
 from pathlib import Path
 from time import perf_counter
@@ -250,9 +251,14 @@ def _crop_to_bbox(
 ) -> xr.Dataset:
     """Select the source pixels whose cells cover a requested AOI.
 
-    Bounds are densified during reprojection and expanded by half a pixel so an
-    AOI smaller than one source pixel still selects its covering cell. Additional
-    buffer pixels are useful for downstream interpolating kernels.
+    Bounds are densified during reprojection (when ``bbox_crs`` differs from the
+    tile CRS) and converted to a half-open integer pixel window through the
+    geobox's inverse affine. A pixel is included iff its cell intersects the AOI
+    interior with positive area, so cells that merely touch the AOI edge are
+    excluded. An AOI smaller than one pixel still selects its covering cell.
+    ``buffer_pixels`` are then added on every side (useful for downstream
+    interpolating kernels) and the window is clamped to the array. The result may
+    be empty (0 along x and/or y) when the AOI does not overlap the tile.
     """
     from pyproj import CRS, Transformer
 
@@ -263,18 +269,27 @@ def _crop_to_bbox(
             minx, miny, maxx, maxy, densify_pts=21
         )
 
-    x_margin = abs(geobox.transform.a) * (buffer_pixels + 0.5)
-    y_margin = abs(geobox.transform.e) * (buffer_pixels + 0.5)
-    minx, maxx = minx - x_margin, maxx + x_margin
-    miny, maxy = miny - y_margin, maxy + y_margin
+    inverse = ~geobox.transform
+    corners = [inverse @ (x, y) for x in (minx, maxx) for y in (miny, maxy)]
+    cols = [c for c, _ in corners]
+    rows = [r for _, r in corners]
 
-    def ordered_slice(coord: xr.DataArray, low: float, high: float) -> slice:
-        ascending = coord.values[0] <= coord.values[-1]
-        return slice(low, high) if ascending else slice(high, low)
+    # Tolerance (in pixels) so float noise on an exact cell edge does not pull in
+    # a neighbouring pixel.
+    eps = 1e-6
 
-    return ds.sel(
-        x=ordered_slice(ds.coords["x"], minx, maxx),
-        y=ordered_slice(ds.coords["y"], miny, maxy),
+    def window(low: float, high: float, size: int) -> slice:
+        start = math.floor(low + eps)
+        stop = math.ceil(high - eps)
+        if stop <= start:  # sub-pixel (or zero-width) AOI: keep its covering cell
+            stop = start + 1
+        start = min(max(start - buffer_pixels, 0), size)
+        stop = min(max(stop + buffer_pixels, start), size)
+        return slice(start, stop)
+
+    return ds.isel(
+        x=window(min(cols), max(cols), ds.sizes["x"]),
+        y=window(min(rows), max(rows), ds.sizes["y"]),
     )
 
 

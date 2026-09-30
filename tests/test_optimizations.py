@@ -96,7 +96,7 @@ def test_chunk_profiles_are_storage_aligned(profile, expected):
     assert _resolve_chunks(_fake_manifest(), profile) == expected
 
 
-def test_aoi_crop_is_an_unmodified_source_subset():
+def _crop_fixture():
     geobox = GeoBox(
         shape=(10, 10),
         affine=Affine(10, 0, 0, 0, -10, 100),
@@ -108,12 +108,37 @@ def test_aoi_crop_is_an_unmodified_source_subset():
         {"v": (("y", "x"), raw)},
         coords={"x": coords["x"].values, "y": coords["y"].values},
     )
+    return ds, geobox
+
+
+def test_aoi_crop_is_an_unmodified_source_subset():
+    ds, geobox = _crop_fixture()
     cropped = _crop_to_bbox(ds, geobox, (20, 40, 50, 80), "EPSG:32632", buffer_pixels=0)
-    assert cropped.sizes["x"] < ds.sizes["x"]
-    assert cropped.sizes["y"] < ds.sizes["y"]
+    # Cells merely touching the AOI edge are excluded: x 20-50, y 40-80 only.
+    assert cropped.sizes["x"] == 3
+    assert cropped.sizes["y"] == 4
     expected = ds.sel(x=cropped.x, y=cropped.y)
     xr.testing.assert_identical(cropped, expected)
     assert np.shares_memory(cropped.v.values, ds.v.values)
+
+
+def test_aoi_crop_subpixel_aoi_selects_covering_cell():
+    ds, geobox = _crop_fixture()
+    cropped = _crop_to_bbox(ds, geobox, (23, 43, 27, 47), "EPSG:32632", buffer_pixels=0)
+    assert (cropped.sizes["y"], cropped.sizes["x"]) == (1, 1)
+    assert float(cropped.x[0]) == 25.0 and float(cropped.y[0]) == 45.0
+
+
+def test_aoi_crop_buffer_pixels_expand_each_side():
+    ds, geobox = _crop_fixture()
+    cropped = _crop_to_bbox(ds, geobox, (20, 40, 50, 80), "EPSG:32632", buffer_pixels=1)
+    assert (cropped.sizes["y"], cropped.sizes["x"]) == (6, 5)
+
+
+def test_aoi_crop_outside_tile_is_empty():
+    ds, geobox = _crop_fixture()
+    cropped = _crop_to_bbox(ds, geobox, (500, 500, 600, 600), "EPSG:32632", 0)
+    assert cropped.sizes["x"] == 0 or cropped.sizes["y"] == 0
 
 
 def _index_frame():
