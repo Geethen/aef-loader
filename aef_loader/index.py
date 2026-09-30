@@ -15,7 +15,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import obstore as obs
@@ -387,20 +387,26 @@ class AEFIndex:
         self._geoms = shapely.from_wkb(wkb)
         return self._geoms
 
-    def _get_start_and_end_year(self, years: int | DateRange) -> tuple[int, int]:
-        if isinstance(years, int):
-            start_year = end_year = years
+    def _get_start_and_end_year(self, years: Any) -> tuple[int, int]:
+        def as_year(value: Any) -> int:
+            try:
+                return int(str(value)[:4]) if isinstance(value, str) else int(value)
+            except (ValueError, TypeError):
+                raise ValueError(f"invalid year string: {value!r}") from None
+
+        if isinstance(years, (int, str)):
+            start_year = end_year = as_year(years)
             return start_year, end_year
 
-        start_year, end_year = years
+        if isinstance(years, tuple):
+            if len(years) != 2:
+                raise ValueError(f"years tuple must have length 2, got {len(years)}")
+            start_year, end_year = as_year(years[0]), as_year(years[1])
+            if end_year < start_year:
+                raise ValueError(f"years range {years!r} ends before it starts")
+            return start_year, end_year
 
-        # Handle string dates
-        if isinstance(start_year, str):
-            start_year = int(start_year[:4])
-        if isinstance(end_year, str):
-            end_year = int(end_year[:4])
-
-        return start_year, end_year
+        raise ValueError(f"invalid years type: {type(years)}")
 
     @staticmethod
     def _bbox_to_wgs84(bbox: BoundingBox, bbox_crs: str) -> BoundingBox:
@@ -424,7 +430,7 @@ class AEFIndex:
     async def query(
         self,
         bbox: BoundingBox | None = None,
-        years: int | DateRange | None = None,
+        years: int | str | DateRange | None = None,
         limit: int | None = None,
         bbox_crs: str = "EPSG:4326",
         exact: bool = False,
@@ -435,7 +441,7 @@ class AEFIndex:
     def search(
         self,
         bbox: BoundingBox | None = None,
-        years: int | DateRange | None = None,
+        years: int | str | DateRange | None = None,
         limit: int | None = None,
         bbox_crs: str = "EPSG:4326",
         exact: bool = False,
