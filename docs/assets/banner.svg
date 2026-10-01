@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="100%" role="img" aria-labelledby="t d">
+  <title id="t">aef-loader-plus</title>
+  <desc id="d">A stack of embedding band layers over a map tile, with a highlighted chip, next to the project name.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#151c38"/>
+    </linearGradient>
+    <linearGradient id="l0" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+    <linearGradient id="l1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#0369a1"/></linearGradient>
+    <linearGradient id="l2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8"/><stop offset="1" stop-color="#4338ca"/></linearGradient>
+    <linearGradient id="l3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#6d28d9"/></linearGradient>
+    <linearGradient id="l4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e879f9"/><stop offset="1" stop-color="#7e22ce"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6366f1" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+    <!-- One layer: a rhombus in isometric projection, 4x4 cell grid of side 30. -->
+    <path id="layer" d="M0 0 L120 -60 L240 0 L120 60 Z"/>
+  </defs>
+
+  <rect width="1200" height="300" rx="24" fill="url(#bg)"/>
+  <ellipse cx="230" cy="150" rx="210" ry="130" fill="url(#glow)"/>
+
+  <!-- Band stack, bottom to top -->
+  <g transform="translate(110 150)" stroke="#0b1020" stroke-width="1.5">
+    <use href="#layer" y="72" fill="url(#l0)" opacity="0.55"/>
+    <use href="#layer" y="54" fill="url(#l1)" opacity="0.65"/>
+    <use href="#layer" y="36" fill="url(#l2)" opacity="0.75"/>
+    <use href="#layer" y="18" fill="url(#l3)" opacity="0.85"/>
+    <use href="#layer" y="0" fill="url(#l4)"/>
+
+    <!-- Top layer pixel grid: lines parallel to the rhombus edges -->
+    <g stroke="#f5f3ff" stroke-opacity="0.35" stroke-width="1" fill="none">
+      <path d="M30 -15 L150 45 M60 -30 L180 30 M90 -45 L210 15"/>
+      <path d="M30 15 L150 -45 M60 30 L180 -30 M90 45 L210 -15"/>
+    </g>
+
+    <!-- Highlighted chip: 2x2 cells -->
+    <path d="M120 -30 L180 0 L120 30 L60 0 Z" fill="#fef9c3" fill-opacity="0.85" stroke="#fde68a" stroke-width="2">
+      <animate attributeName="fill-opacity" values="0.85;0.45;0.85" dur="3s" repeatCount="indefinite"/>
+    </path>
+    <!-- Chip extruded through the stack -->
+    <path d="M60 0 L60 72 L120 102 L120 30 Z" fill="#fde68a" fill-opacity="0.18" stroke="#fde68a" stroke-opacity="0.5" stroke-dasharray="4 4"/>
+    <path d="M180 0 L180 72 L120 102 L120 30 Z" fill="#fde68a" fill-opacity="0.10" stroke="#fde68a" stroke-opacity="0.5" stroke-dasharray="4 4"/>
+  </g>
+
+  <!-- Text -->
+  <g font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <text x="440" y="132" font-size="64" font-weight="700" fill="#e8ecf8" letter-spacing="-1">aef-loader<tspan fill="#a78bfa">-plus</tspan></text>
+    <text x="442" y="178" font-size="24" fill="#9fb0d9">AlphaEarth embeddings → analysis-ready xarray, lazily</text>
+  </g>
+  <text x="442" y="222" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" fill="#7dd3fc" letter-spacing="0.5">64 bands · 10 m · 2017–2025 · AEF + TESSERA · native UTM</text>
+</svg>
