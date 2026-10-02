@@ -4,9 +4,8 @@ Utility functions for AEF data processing.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, overload
-
 import math
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 import xarray as xr
@@ -20,6 +19,70 @@ from aef_loader.constants import (
 
 if TYPE_CHECKING:
     from odc.geo.geobox import GeoBox
+
+
+def _build_dequant_lut(
+    divisor: float = AEF_DEQUANT_DIVISOR,
+    nodata_value: int = AEF_NODATA_VALUE,
+) -> np.ndarray:
+    """256-entry int8->float32 dequantization lookup table indexed by ``raw + 128``.
+
+    AEF stores embeddings as int8 in ``[-128, 127]``, so every possible value is
+    one of 256 outcomes. Precomputing them once and gathering (``lut[raw + 128]``)
+    is measurably faster than recomputing ``(v/127.5)**2 * sign(v)`` per pixel and
+    fuses the ``-128 -> NaN`` nodata mapping into the same gather, avoiding a
+    separate boolean mask and its temporaries. At ~4.3e9 elements per 8192^2 x 64
+    tile this dominates the cost of ``dequantize_aef`` on the numpy path.
+    """
+    idx = np.arange(-128, 128, dtype=np.float32)
+    lut = (idx / divisor) ** 2 * np.sign(idx)
+    lut[nodata_value + 128] = np.nan  # -128 -> NaN, honoured by resamplers as nodata
+    return lut
+
+
+# Default LUT for the common (divisor=127.5, nodata=-128) case. A non-default
+# call rebuilds a table on the fly, so correctness never depends on this cache.
+_DEQUANT_LUT = _build_dequant_lut()
+# Reordering maps the raw int8 bit pattern directly to its result. Indexing this
+# with raw.view(uint8) avoids allocating an int16 array plus a shifted copy.
+_DEQUANT_LUT_UINT8 = np.concatenate((_DEQUANT_LUT[128:], _DEQUANT_LUT[:128]))
+
+
+def _dequantize_lut(
+    raw: np.ndarray,
+    divisor: float = AEF_DEQUANT_DIVISOR,
+    nodata_value: int = AEF_NODATA_VALUE,
+) -> np.ndarray:
+    """Dequantize a raw int8/int16 array via the LUT; ``nodata_value`` -> NaN.
+
+    Returns a fresh float32 array. ``raw`` may be int8 or a wider int type (the
+    warped-read path yields int16 with the -128 sentinel preserved); values are
+    shifted into ``[0, 255]`` to index the table.
+    """
+    lut = (
+        _DEQUANT_LUT
+        if divisor == AEF_DEQUANT_DIVISOR and nodata_value == AEF_NODATA_VALUE
+        else _build_dequant_lut(divisor, nodata_value)
+    )
+    raw_array = np.asarray(raw)
+    if raw_array.dtype == np.int8:
+        uint8_lut = (
+            _DEQUANT_LUT_UINT8
+            if lut is _DEQUANT_LUT
+            else np.concatenate((lut[128:], lut[:128]))
+        )
+        return uint8_lut[raw_array.view(np.uint8)]
+    if raw_array.dtype.kind not in "iu":
+        raise TypeError(
+            f"dequantize_aef expects integer-quantized data, got {raw_array.dtype}; "
+            "float/bool input looks already dequantized."
+        )
+    if raw_array.size and (raw_array.min() < -128 or raw_array.max() > 127):
+        raise ValueError(
+            "quantized values must be within [-128, 127]; got range "
+            f"[{raw_array.min()}, {raw_array.max()}]"
+        )
+    return lut[raw_array.astype(np.int16) + 128]
 
 
 def dequantize_aef(
@@ -59,16 +122,26 @@ def dequantize_aef(
     if isinstance(data, xr.Dataset):
         return data.map(lambda x: dequantize_aef(x, divisor, nodata_value))
 
-    # Create nodata mask before conversion
-    nodata_mask = data == nodata_value
-
-    # Apply the correct formula: (v/127.5)² × sign(v)
-    normalized = data.astype(np.float32) / divisor
-    dequantized = (normalized**2) * np.sign(data)
-
-    # Apply nodata mask (convert -128 to NaN)
     if isinstance(data, xr.DataArray):
-        dequantized = xr.where(nodata_mask, np.nan, dequantized)
+        array = data.data
+        # Check the dtype up front: for dask input the per-block check in
+        # _dequantize_lut would otherwise only fire at compute time.
+        if np.dtype(array.dtype).kind not in "iu":
+            raise TypeError(
+                f"dequantize_aef expects integer-quantized data, got {array.dtype}; "
+                "float/bool input looks already dequantized."
+            )
+        if hasattr(array, "map_blocks"):
+            # One task per existing block, with no intermediate mask, cast,
+            # division, square and sign arrays in the Dask graph.
+            dequantized = array.map_blocks(
+                _dequantize_lut,
+                divisor=divisor,
+                nodata_value=nodata_value,
+                dtype=np.float32,
+            )
+        else:
+            dequantized = _dequantize_lut(array, divisor, nodata_value)
         result = xr.DataArray(
             dequantized,
             dims=data.dims,
@@ -77,11 +150,13 @@ def dequantize_aef(
         )
         result.attrs["units"] = "embedding"
         result.attrs["dequantized"] = True
+        result.attrs["aef:encoding"] = "float"
         return set_aef_nodata(result, nodata=np.nan)
-    else:
-        dequantized = np.where(nodata_mask, np.nan, dequantized)
 
-    return dequantized
+    # Plain ndarray: gather through the precomputed LUT (see _dequantize_lut).
+    # Bit-identical to the elementwise formula, ~1.3x faster, and it folds the
+    # -128 -> NaN nodata step into the same gather (no extra mask/temporaries).
+    return _dequantize_lut(data, divisor, nodata_value)
 
 
 def quantize_aef(
@@ -104,16 +179,27 @@ def quantize_aef(
         data: Float32 embedding data in range [-1, 1]
         divisor: Quantization divisor (default: 127.5)
 
+    Non-finite inputs (NaN and +/-inf) are treated as nodata and written as
+    ``-128`` (AEF_NODATA_VALUE), so a dequantize/quantize round trip preserves
+    nodata instead of turning it into a valid zero code.
+
     Returns:
-        Quantized int8 data in range [-127, 127]
+        Quantized int8 data in range [-127, 127], with -128 for nodata
     """
+    finite = np.isfinite(data)
     sign = np.sign(data)
     magnitude = np.sqrt(np.abs(data))
     quantized = np.round(sign * magnitude * divisor)
 
     # Clamp to valid range [-127, 127] BEFORE casting to int8
     # This prevents overflow (128 -> -128 in int8)
-    quantized = np.clip(quantized, -127, 127).astype(np.int8)
+    quantized = np.clip(quantized, -127, 127)
+    # Replace non-finite values before the cast: NaN -> int8 is undefined.
+    if isinstance(data, xr.DataArray):
+        quantized = xr.where(finite, quantized, AEF_NODATA_VALUE)
+    else:
+        quantized = np.where(finite, quantized, AEF_NODATA_VALUE)
+    quantized = quantized.astype(np.int8)
 
     if isinstance(data, xr.DataArray):
         result = xr.DataArray(
@@ -123,6 +209,7 @@ def quantize_aef(
             attrs=data.attrs.copy(),
         )
         result.attrs["quantized"] = True
+        result.attrs["aef:encoding"] = "aef-sqrt"
         return set_aef_nodata(result, nodata=AEF_NODATA_VALUE)
 
     return quantized
@@ -184,16 +271,16 @@ def int8_to_float32(
 
 
 @overload
-def set_aef_nodata(data: xr.DataArray, nodata: int | float = ...) -> xr.DataArray: ...
+def set_aef_nodata(data: xr.DataArray, nodata: float = ...) -> xr.DataArray: ...
 
 
 @overload
-def set_aef_nodata(data: xr.Dataset, nodata: int | float = ...) -> xr.Dataset: ...
+def set_aef_nodata(data: xr.Dataset, nodata: float = ...) -> xr.Dataset: ...
 
 
 def set_aef_nodata(
     data: xr.DataArray | xr.Dataset,
-    nodata: int | float = AEF_NODATA_VALUE,
+    nodata: float = AEF_NODATA_VALUE,
 ) -> xr.DataArray | xr.Dataset:
     """Return a copy with the nodata and _FillValue attributes set explicitly.
 
@@ -232,11 +319,137 @@ def split_bands(ds: xr.Dataset, var: str = "embeddings") -> xr.Dataset:
     return split
 
 
+def _is_quantized(tree: DataTree) -> bool:
+    """True if any zone's embeddings hold raw codes (AEF int8, TESSERA codes).
+
+    Decided by the ``aef:encoding`` attr via ``is_raw_encoded``, so integer
+    quality variables alongside dequantized embeddings do not count, and codes
+    cast to float (``int8_to_float32``) still do. Interpolating resamplers must
+    not run on raw codes (see ``reproject_datatree``).
+    """
+    from aef_loader.collection import is_raw_encoded
+
+    for zone_name in tree.children:
+        ds = tree[zone_name].ds
+        if ds is not None and is_raw_encoded(ds):
+            return True
+    return False
+
+
+def _nodata_attr(da: xr.DataArray):
+    """The variable's ``nodata`` / ``_FillValue`` attr, or None."""
+    nodata = da.attrs.get("nodata", da.attrs.get("_FillValue"))
+    return None if nodata is None else nodata
+
+
+def _pixel_validity(ds: xr.Dataset, zone: str | None = None) -> xr.DataArray:
+    """Boolean ``(time, y, x)`` mask of pixels that hold data, with no ``band`` dim.
+
+    Raw TESSERA (has ``scales``): finite scales. Otherwise the ``embeddings``
+    variable decides: integer data needs a ``nodata``/``_FillValue`` attr
+    (``!= nodata`` in any band); float data uses non-null in any band (and, when
+    a finite nodata attr is present, ``!= nodata``). Integer data with no nodata
+    attr raises, since nothing distinguishes empty pixels from real codes.
+    """
+    if "scales" in ds.data_vars:
+        return np.isfinite(ds["scales"])
+    if "embeddings" not in ds.data_vars:
+        raise ValueError(f"zone {zone!r} has no 'embeddings' or 'scales' variable")
+    emb = ds["embeddings"]
+    nodata = _nodata_attr(emb)
+    if np.issubdtype(emb.dtype, np.integer):
+        if nodata is None:
+            raise ValueError(
+                f"zone {zone!r}: integer variable 'embeddings' has no nodata/"
+                "_FillValue attr, so pixel validity cannot be determined"
+            )
+        valid = emb != nodata
+    else:
+        valid = emb.notnull()
+        if nodata is not None and not math.isnan(nodata):
+            valid = valid & (emb != nodata)
+    return valid.any("band") if "band" in valid.dims else valid
+
+
+def _align_fill(da: xr.DataArray):
+    """Fill value for a variable's gaps: its nodata for ints, NaN for floats."""
+    if np.issubdtype(da.dtype, np.integer):
+        nodata = _nodata_attr(da)
+        return 0 if nodata is None else int(nodata)
+    return np.nan
+
+
+def _merge_zone_datasets(datasets: list[xr.Dataset]) -> xr.Dataset:
+    """Merge zone datasets on a common grid, one source zone per pixel.
+
+    ``take = ~valid_so_far & valid_next`` is computed once per zone from
+    ``_pixel_validity`` and applied to every variable, so e.g. TESSERA codes and
+    scales of one pixel never come from different zones. ``time`` (and ``band``)
+    are outer-aligned first, filling each variable with its own nodata. Merging
+    is elementwise ``xr.where`` (not ``combine_first``, which reindexes ``band``
+    and fragments its chunks), so chunk structure is preserved.
+    """
+    names = [ds.attrs.get("source_zone") for ds in datasets]
+    valids = [_pixel_validity(ds, n) for ds, n in zip(datasets, names)]
+
+    for dim in ("time", "band"):
+        if not all(dim in ds.dims for ds in datasets):
+            continue
+        indexes = [ds.indexes[dim] for ds in datasets]
+        if all(idx.equals(indexes[0]) for idx in indexes[1:]):
+            continue
+        union = indexes[0]
+        for idx in indexes[1:]:
+            union = union.union(idx, sort=None)
+        aligned = []
+        for ds in datasets:
+            fills = {var: _align_fill(ds[var]) for var in ds.data_vars}
+            attrs = {var: ds[var].attrs for var in ds.data_vars}
+            new = ds.reindex({dim: union}, fill_value=fills)
+            for var, var_attrs in attrs.items():
+                new[var].attrs = var_attrs
+            aligned.append(new)
+        datasets = aligned
+        if dim == "time":
+            valids = [v.reindex(time=union, fill_value=False) for v in valids]
+
+    combined = datasets[0]
+    valid_combined = valids[0]
+    for ds, valid_next in zip(datasets[1:], valids[1:]):
+        take = ~valid_combined & valid_next
+        for var in combined.data_vars:
+            if var not in ds.data_vars:
+                # Only an earlier zone has the variable: pixels this zone takes get nodata.
+                fill = _align_fill(combined[var])
+                attrs = combined[var].attrs
+                dims = combined[var].dims
+                kept = combined[var].where(~take, fill).astype(combined[var].dtype)
+                combined[var] = kept.transpose(*dims)
+                combined[var].attrs = attrs
+        for var in ds.data_vars:
+            if var not in combined.data_vars:
+                # Only this zone has the variable: earlier-zone pixels get nodata.
+                fill = _align_fill(ds[var])
+                base = ds[var].where(~valid_combined, fill).astype(ds[var].dtype)
+                base.attrs = ds[var].attrs
+                combined[var] = base
+                continue
+            attrs = combined[var].attrs
+            dims = combined[var].dims
+            merged = xr.where(take, ds[var], combined[var], keep_attrs=True)
+            # xr.where broadcasts ``take`` first; restore the original dim order.
+            combined[var] = merged.transpose(*dims)
+            combined[var].attrs = attrs
+        valid_combined = valid_combined | valid_next
+    return combined
+
+
 def reproject_datatree(
     tree: DataTree,
     target_geobox: GeoBox,
     resampling: str = "nearest",
-    dst_nodata: int | float | None = None,
+    dst_nodata: float | None = None,
+    allow_lossy_resampling: bool = False,
 ) -> xr.Dataset:
     """
     Reproject all zones in a DataTree to a common target GeoBox.
@@ -249,10 +462,16 @@ def reproject_datatree(
     executes when .compute() is called. Chunks are loaded and reprojected
     on-demand.
 
-    For combining zones, this uses xarray's combine_first which:
-    - Uses values from earlier zones where available (non-NaN)
-    - Fills NaN regions with values from subsequent zones
-    - In true overlapping regions (both have valid data), earlier zones take precedence
+    Zones are merged with one source zone per pixel: a validity mask per zone
+    (``_pixel_validity``: not the nodata sentinel / not NaN / finite scale) decides
+    which zone supplies each ``(time, y, x)`` pixel, and that zone supplies *all*
+    of the pixel's variables (so e.g. codes and scales never come from different
+    zones):
+    - A pixel takes its values from the first zone (in tree order) that is valid there
+    - Pixels invalid in every earlier zone are filled from later zones
+    - In true overlapping regions (both valid), earlier zones take precedence
+    - Zones with different years (or bands) are outer-aligned first
+    - The merge is elementwise (``xr.where``), so chunk structure is preserved
 
     Since overlapping regions contain reprojections of the same underlying data,
     values should be identical regardless of which zone they come from.
@@ -289,6 +508,23 @@ def reproject_datatree(
         result = combined.compute()  # triggers actual reprojection
         ```
     """
+    # Guard: interpolating resamplers corrupt raw int8 embeddings. They blend the
+    # -128 nodata sentinel into neighbouring valid pixels AND interpolate along
+    # AEF's nonlinear quantization curve (a weighted mean of quantized codes does
+    # not dequantize to the mean of the underlying values). Only "nearest" (which
+    # copies source codes verbatim) is exact on quantized data. To use bilinear/
+    # cubic/etc., dequantize to float first (dequantize_aef, -128 -> NaN) so the
+    # resampler operates on real embedding values with NaN-aware nodata.
+    if resampling != "nearest" and not allow_lossy_resampling and _is_quantized(tree):
+        raise ValueError(
+            f"resampling={resampling!r} would corrupt raw quantized embeddings: "
+            "it interpolates across the nodata sentinel and between codes that "
+            "are not linear in the embedding value. Dequantize first (AEF: "
+            "dequantize_aef; TESSERA: open_tessera(dequantize=True)) and "
+            "reproject the float data, or pass allow_lossy_resampling=True to "
+            "override. 'nearest' is always safe."
+        )
+
     reproject_kwargs: dict = {"resampling": resampling}
     if dst_nodata is not None:
         reproject_kwargs["dst_nodata"] = dst_nodata
@@ -313,38 +549,17 @@ def reproject_datatree(
         reprojected_datasets.append(reprojected)
 
     if len(reprojected_datasets) == 0:
-        raise ValueError("No datasets to reproject")
+        raise ValueError(
+            "No datasets to reproject: none of the "
+            f"{len(tree.children)} zone(s) {list(tree.children)} in the tree has data "
+            f"variables (target CRS {target_geobox.crs})"
+        )
 
     if len(reprojected_datasets) == 1:
         return reprojected_datasets[0]
 
-    # Merge with xr.where to preserve chunk structure.
-    # combine_first triggers xr.align(join="outer") which reindexes the band
-    # dimension, fragmenting band chunks. Since all datasets share the same
-    # target GeoBox, they have identical shapes and coordinates, so we can
-    # merge directly with xr.where (a blockwise op that preserves chunks).
-    combined = reprojected_datasets[0]
-    for ds in reprojected_datasets[1:]:
-        for var in combined.data_vars:
-            if var not in ds.data_vars:
-                continue
-            if combined[var].shape != ds[var].shape:
-                raise ValueError(
-                    f"Shape mismatch merging zones for '{var}': "
-                    f"{combined[var].shape} vs {ds[var].shape}"
-                )
-            # For integer dtypes (e.g. int8), nodata is a sentinel value, not NaN.
-            # Read it from the variable attrs (set by xr_reproject from src nodata).
-            nodata = combined[var].attrs.get(
-                "nodata", combined[var].attrs.get("_FillValue")
-            )
-            if nodata is not None and not (
-                isinstance(nodata, float) and math.isnan(nodata)
-            ):
-                mask = combined[var] == nodata
-            else:
-                mask = combined[var].isnull()
-            combined[var] = xr.where(mask, ds[var], combined[var], keep_attrs=True)
+    # Merge each pixel from exactly one zone (see _merge_zone_datasets).
+    combined = _merge_zone_datasets(reprojected_datasets)
 
     # Re-stamp nodata on the final merged dataset to ensure consistency.
     if dst_nodata is not None:
@@ -355,3 +570,65 @@ def reproject_datatree(
     combined.attrs["target_crs"] = str(target_geobox.crs)
 
     return combined
+
+
+def aoi_geobox(
+    bbox: tuple[float, float, float, float],
+    crs: str,
+    resolution: float,
+    bbox_crs: str | None = None,
+    snap: bool = True,
+) -> GeoBox:
+    """Build a target ``GeoBox`` for an AOI, snapped to a global pixel lattice.
+
+    An AOI-anchored grid (origin at the bbox corner) puts two AOIs reprojected
+    independently (e.g. adjacent tiles, or the same area at different times) on
+    *different* pixel grids, so they cannot be mosaicked without resampling.
+    Snapping the origin to integer multiples of ``resolution`` (anchored at
+    0, 0) makes every AOI at a given resolution/CRS share one grid, so outputs
+    align exactly and can be merged losslessly. This is the odc-geo analogue of
+    the lattice snap ``prep_aef_tiles.py`` applies to warped tiles.
+
+    Note that ``GeoBox.from_bbox`` itself snaps to the resolution lattice by
+    default (odc-geo >= 0.5), so the AOI-anchored grid needs ``tight=True``.
+
+    Args:
+        bbox: AOI bounds ``(minx, miny, maxx, maxy)``.
+        crs: Target CRS for the GeoBox (e.g. ``"EPSG:32633"``).
+        resolution: Pixel size in target CRS units (metres for UTM).
+        bbox_crs: CRS of ``bbox`` if different from ``crs``; the bbox is
+            reprojected (densified) to ``crs`` first. Defaults to ``crs``.
+        snap: When True (default), snap the origin to the ``resolution`` lattice
+            and grow the extent outward to fully cover ``bbox``. When False,
+            the grid is AOI-anchored: its origin sits at the bbox corner
+            (``GeoBox.from_bbox(..., tight=True)``).
+
+    Returns:
+        A north-up ``GeoBox`` in ``crs`` at ``resolution`` covering ``bbox``.
+    """
+    from odc.geo.geobox import GeoBox
+
+    minx, miny, maxx, maxy = bbox
+    if bbox_crs is not None and str(bbox_crs) != str(crs):
+        from pyproj import Transformer
+
+        transformer = Transformer.from_crs(bbox_crs, crs, always_xy=True)
+        minx, miny, maxx, maxy = transformer.transform_bounds(
+            minx, miny, maxx, maxy, densify_pts=21
+        )
+
+    if not snap:
+        return GeoBox.from_bbox(
+            (minx, miny, maxx, maxy), crs=crs, resolution=resolution, tight=True
+        )
+
+    # Snap outward to the global lattice: floor the min edges, ceil the max edges.
+    snapped_minx = math.floor(minx / resolution) * resolution
+    snapped_miny = math.floor(miny / resolution) * resolution
+    snapped_maxx = math.ceil(maxx / resolution) * resolution
+    snapped_maxy = math.ceil(maxy / resolution) * resolution
+    return GeoBox.from_bbox(
+        (snapped_minx, snapped_miny, snapped_maxx, snapped_maxy),
+        crs=crs,
+        resolution=resolution,
+    )

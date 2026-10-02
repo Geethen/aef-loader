@@ -1,0 +1,939 @@
+{
+  "index_download_s": 29.908083199999965,
+  "year": 2024,
+  "crs": "EPSG:32631",
+  "origin": [
+    648000.0,
+    6526000.0
+  ],
+  "results": [
+    {
+      "init_s": 9.830569599998853,
+      "fetch_s": 7.212784000003012,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.005765865013117578
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 20.35295699999915,
+      "rep": 0
+    },
+    {
+      "init_s": 7.67092600000251,
+      "open_s": 2.985446900001989,
+      "read_s": 4.749828300002264,
+      "fetch_s": 7.742001700000401,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 18.884277599998313,
+      "rep": 0
+    },
+    {
+      "init_s": 12.53634570000213,
+      "open_s": 3.6170980999995663,
+      "read_s": 4.9725486999996065,
+      "fetch_s": 8.59443630000169,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 26.37411119999888,
+      "rep": 0
+    },
+    {
+      "init_s": 12.476540300001943,
+      "open_s": 1.714020999999775,
+      "read_s": 6.307394200000999,
+      "fetch_s": 8.027578299999732,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 25.674177499997313,
+      "rep": 0
+    },
+    {
+      "init_s": 7.888742099999945,
+      "open_s": 2.9637097000013455,
+      "read_s": 4.2080484999969485,
+      "fetch_s": 7.1773511999999755,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 18.542720199999167,
+      "rep": 1
+    },
+    {
+      "init_s": 12.605244700000185,
+      "open_s": 3.611649000002217,
+      "read_s": 4.911825899998803,
+      "fetch_s": 8.529438700003084,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 26.352509799999098,
+      "rep": 1
+    },
+    {
+      "init_s": 12.320302399999491,
+      "open_s": 1.7185410000020056,
+      "read_s": 5.562320899996848,
+      "fetch_s": 7.286565900001733,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 24.893548800002463,
+      "rep": 1
+    },
+    {
+      "init_s": 10.27594390000013,
+      "fetch_s": 6.953528999998525,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.005765865013117578
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 20.558592000001227,
+      "rep": 1
+    },
+    {
+      "init_s": 13.031588800000463,
+      "open_s": 3.6271971999995003,
+      "read_s": 5.220189700001356,
+      "fetch_s": 8.853339000001142,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 27.21859879999829,
+      "rep": 2
+    },
+    {
+      "init_s": 12.638490400000592,
+      "open_s": 1.6921707999972568,
+      "read_s": 5.729984199999308,
+      "fetch_s": 7.4269380000005185,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 25.196754399999918,
+      "rep": 2
+    },
+    {
+      "init_s": 9.995596799999475,
+      "fetch_s": 5.894630699996924,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.005765865013117578
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 19.192357699997956,
+      "rep": 2
+    },
+    {
+      "init_s": 7.7623065000007045,
+      "open_s": 2.93111399999907,
+      "read_s": 4.473933600002056,
+      "fetch_s": 7.410252500001661,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 18.634840100003203,
+      "rep": 2
+    },
+    {
+      "init_s": 12.481226900003094,
+      "open_s": 1.7001058999994711,
+      "read_s": 5.498922299997503,
+      "fetch_s": 7.204220399999031,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 24.922575799999322,
+      "rep": 3
+    },
+    {
+      "init_s": 10.381660899998678,
+      "fetch_s": 7.668826999997691,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.005765865013117578
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 21.40657250000004,
+      "rep": 3
+    },
+    {
+      "init_s": 7.83317569999781,
+      "open_s": 2.9514636999992945,
+      "read_s": 4.248647299998993,
+      "fetch_s": 7.207139400001324,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 18.51642769999671,
+      "rep": 3
+    },
+    {
+      "init_s": 12.107707800001663,
+      "open_s": 3.2997911000020395,
+      "read_s": 6.0448166000023775,
+      "fetch_s": 9.349829300001147,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 26.5867001000006,
+      "rep": 3
+    },
+    {
+      "init_s": 9.827248800000234,
+      "fetch_s": 6.16832820000127,
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "nbytes": 16777216,
+        "finite_fraction": 1.0,
+        "mean": -0.005765865013117578
+      },
+      "method": "geedim",
+      "size": 256,
+      "process_wall_s": 19.296451199999865,
+      "rep": 4
+    },
+    {
+      "init_s": 7.80925600000046,
+      "open_s": 2.919829499998741,
+      "read_s": 4.386293299998215,
+      "fetch_s": 7.3124556000002485,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "upstream",
+      "size": 256,
+      "process_wall_s": 18.562352299999475,
+      "rep": 4
+    },
+    {
+      "init_s": 12.344919999999547,
+      "open_s": 3.392838199997641,
+      "read_s": 5.725223999997979,
+      "fetch_s": 9.123551199998474,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus",
+      "size": 256,
+      "process_wall_s": 26.647096300002886,
+      "rep": 4
+    },
+    {
+      "init_s": 12.188395199998922,
+      "open_s": 1.692685200003325,
+      "read_s": 5.758221200001572,
+      "fetch_s": 7.456519800001843,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          256,
+          256
+        ],
+        "dtype": "int8",
+        "nbytes": 4194304,
+        "finite_fraction": 1.0,
+        "mean": -2.081390380859375
+      },
+      "method": "plus_warm",
+      "size": 256,
+      "process_wall_s": 24.80771409999943,
+      "rep": 4
+    },
+    {
+      "method": "integrity",
+      "size": 256,
+      "upstream_equals_plus": true,
+      "shapes": [
+        [
+          64,
+          256,
+          256
+        ],
+        [
+          64,
+          256,
+          256
+        ],
+        [
+          64,
+          256,
+          256
+        ]
+      ],
+      "gee_vs_dequantized_max_abs_diff": 2.9802322387695312e-08,
+      "gee_vs_dequantized_mean_abs_diff": 5.665195423887326e-09
+    },
+    {
+      "init_s": 10.007235500001116,
+      "fetch_s": 13.29000630000155,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.005103685815223649
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 27.444104300000618,
+      "rep": 0
+    },
+    {
+      "init_s": 8.299575199998799,
+      "open_s": 3.314746100000775,
+      "read_s": 14.084931100001995,
+      "fetch_s": 17.404376599999523,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 29.716259900000296,
+      "rep": 0
+    },
+    {
+      "init_s": 23.127436099999613,
+      "open_s": 3.5238978000015777,
+      "read_s": 10.546735899999476,
+      "fetch_s": 14.078426899999613,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 43.43139579999843,
+      "rep": 0
+    },
+    {
+      "init_s": 12.483833199999935,
+      "open_s": 1.6975540999992518,
+      "read_s": 10.982058899997355,
+      "fetch_s": 12.690004000000044,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 31.012396199999785,
+      "rep": 0
+    },
+    {
+      "init_s": 7.783446699999331,
+      "open_s": 3.0565471000008984,
+      "read_s": 6.716246399999363,
+      "fetch_s": 9.778953599998204,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 21.56442969999989,
+      "rep": 1
+    },
+    {
+      "init_s": 12.086263400000462,
+      "open_s": 3.3982993999998143,
+      "read_s": 7.599649700001464,
+      "fetch_s": 11.007890799999586,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 28.96350910000183,
+      "rep": 1
+    },
+    {
+      "init_s": 12.043277100001433,
+      "open_s": 1.6078739999975369,
+      "read_s": 9.034450099999958,
+      "fetch_s": 10.657129599996551,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 28.331358599996747,
+      "rep": 1
+    },
+    {
+      "init_s": 9.549111100001028,
+      "fetch_s": 13.777677599999151,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.005103685815223649
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 27.31821040000068,
+      "rep": 1
+    },
+    {
+      "init_s": 12.608996300001309,
+      "open_s": 3.681102700000338,
+      "read_s": 11.892437499998778,
+      "fetch_s": 15.58246859999781,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 34.06001190000097,
+      "rep": 2
+    },
+    {
+      "init_s": 12.898342600001342,
+      "open_s": 1.74147019999873,
+      "read_s": 11.603996599998936,
+      "fetch_s": 13.353965700000117,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 32.24080060000051,
+      "rep": 2
+    },
+    {
+      "init_s": 10.152715100000933,
+      "fetch_s": 15.141453600001114,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.005103685815223649
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 29.319222199999786,
+      "rep": 2
+    },
+    {
+      "init_s": 8.080482299999858,
+      "open_s": 3.2105075999970722,
+      "read_s": 8.836051900001621,
+      "fetch_s": 12.054976699997496,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 24.4030829000003,
+      "rep": 2
+    },
+    {
+      "init_s": 12.727149999998801,
+      "open_s": 1.7807875999969838,
+      "read_s": 9.468655399999989,
+      "fetch_s": 11.2581926999992,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 31.881458300002123,
+      "rep": 3
+    },
+    {
+      "init_s": 11.139309700000013,
+      "fetch_s": 13.14005200000247,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.005103685815223649
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 30.24287159999949,
+      "rep": 3
+    },
+    {
+      "init_s": 7.595526999997674,
+      "open_s": 2.9209021999995457,
+      "read_s": 5.521310399999493,
+      "fetch_s": 8.447636600001715,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 20.026438800003234,
+      "rep": 3
+    },
+    {
+      "init_s": 12.381690100002743,
+      "open_s": 3.4590492000024824,
+      "read_s": 8.78656509999928,
+      "fetch_s": 12.2574311999997,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 30.74604309999995,
+      "rep": 3
+    },
+    {
+      "init_s": 10.13876899999741,
+      "fetch_s": 13.243105099998502,
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "nbytes": 268435456,
+        "finite_fraction": 1.0,
+        "mean": -0.005103685815223649
+      },
+      "method": "geedim",
+      "size": 1024,
+      "process_wall_s": 27.27664150000055,
+      "rep": 4
+    },
+    {
+      "init_s": 7.615829899998062,
+      "open_s": 2.8887600999987626,
+      "read_s": 12.369798899999296,
+      "fetch_s": 15.264828100000159,
+      "tiles": 1,
+      "module": "C:\\Users\\geethen.singh\\AppData\\Local\\Temp\\claude\\c--Users-geethen-singh-projects-postdoc2\\d077ba77-3ccb-4ba0-b6b3-54faf6c55b7d\\scratchpad\\aefbench\\.pixi\\envs\\default\\Lib\\site-packages\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "upstream",
+      "size": 1024,
+      "process_wall_s": 28.187320799999725,
+      "rep": 4
+    },
+    {
+      "init_s": 14.030947499999456,
+      "open_s": 4.000288600000204,
+      "read_s": 10.552633799998148,
+      "fetch_s": 14.563933100002032,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus",
+      "size": 1024,
+      "process_wall_s": 37.26365380000061,
+      "rep": 4
+    },
+    {
+      "init_s": 17.62568150000152,
+      "open_s": 1.5191785000024538,
+      "read_s": 10.064931900000374,
+      "fetch_s": 11.58996290000141,
+      "tiles": 1,
+      "module": "\\\\nina.no\\Prosjekter\\154001_nyvest\\landcover_Geethen\\aef_loader_plus\\aef_loader\\__init__.py",
+      "check": {
+        "shape": [
+          64,
+          1024,
+          1024
+        ],
+        "dtype": "int8",
+        "nbytes": 67108864,
+        "finite_fraction": 1.0,
+        "mean": -1.7192822396755219
+      },
+      "method": "plus_warm",
+      "size": 1024,
+      "process_wall_s": 36.99070070000016,
+      "rep": 4
+    },
+    {
+      "method": "integrity",
+      "size": 1024,
+      "upstream_equals_plus": true,
+      "shapes": [
+        [
+          64,
+          1024,
+          1024
+        ],
+        [
+          64,
+          1024,
+          1024
+        ],
+        [
+          64,
+          1024,
+          1024
+        ]
+      ],
+      "gee_vs_dequantized_max_abs_diff": 2.9802322387695312e-08,
+      "gee_vs_dequantized_mean_abs_diff": 5.7571050149363145e-09
+    }
+  ]
+}

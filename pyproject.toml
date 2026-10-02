@@ -1,46 +1,60 @@
 [project]
-name = "aef-loader"
-version = "0.3.0"
-description = "Virtualizarr access for AEF embeddings."
+name = "aef-loader-plus"
+version = "0.1.0"
+description = "Fork of aef-loader: VirtualiZarr access to AlphaEarth Foundations embeddings with manifest caching, faster dequantization and safer reprojection."
 readme = "README.md"
 requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
 authors = [
-    { name = "Jake Wilkins" }
+    { name = "Geethen Singh" },
+    { name = "Jake Wilkins"},
+]
+keywords = ["alphaearth", "tessera", "embeddings", "satellite", "virtualizarr", "xarray", "cog"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
     "virtual-tiff>=0.5.0",
     "virtualizarr>=2.0.0",
     "obstore>=0.4.0",
+    "obspec-utils",
     "numpy>=1.24.0",
-    "geopandas>=0.14.0",
+    "pandas>=2.2",
     "xarray>=2024.1.0",
     "zarr>=3.0.0",
-    "shapely>=2.0.2",
     "affine>=2.4.0",
     "odc-geo>=0.4.10",
     "pyarrow>=23.0.1",
+    "pyproj",
     "dask>=2024.1.0",
     "rasterio>=1.4.4",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
+exact = [
+    "geopandas>=0.14.0",
+    "shapely>=2.0.2",
+]
+benchmark = [
+    "geedim",
+    "earthengine-api",
+    "matplotlib",
+    "psutil",
+]
 dev = [
-    "prek>=0.3.4",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "ruff",
-    "ty",
+    "geopandas>=0.14.0",
+    "shapely>=2.0.2",
 ]
-docs = [
-    "mkdocs-material",
-    "mkdocstrings[python]",
-]
-benchmark = [
-    "pytest-benchmark>=4.0.0",
-    "rioxarray>=0.21.0",
-    "xee>=0.0.24",
-    "rasteret>=0.3.0",
-]
+
+[project.urls]
+Homepage = "https://github.com/Geethen/aef_loader_plus"
+Issues = "https://github.com/Geethen/aef_loader_plus/issues"
+Upstream = "https://github.com/jakenotjay/aef-loader"
 
 [build-system]
 requires = ["hatchling"]
@@ -49,24 +63,18 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["aef_loader"]
 
+[tool.hatch.build.targets.sdist]
+include = ["aef_loader", "tests", "docs", "README.md", "LICENSE", "NOTICE"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = [
-    "unit: Fast unit tests without external dependencies",
-    "integration: Integration tests that may require external services",
-    "requires_gcp: Tests that require authenticated GCP credentials",
-    "benchmark: Benchmarks comparing aef-loader against other loading tools",
-    "slow: Slow tests that hit real cloud data. Run manually with: uv run pytest -m slow",
-]
+markers = ["slow: hits real cloud data; run with pytest -m slow"]
 
-[tool.ty.src]
-exclude = ["examples/"]
+[tool.ruff]
+target-version = "py312"
+line-length = 100
 
-[[tool.ty.overrides]]
-include = ["tests/**"]
-
-[tool.ty.overrides.rules]
-possibly-missing-attribute = "ignore"
-no-matching-overload = "ignore"
-unresolved-attribute = "ignore"
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "NPY"]
+ignore = ["E501", "B905"]
