@@ -3,6 +3,7 @@
 import warnings
 
 import numpy as np
+import pytest
 import xarray as xr
 
 from aef_loader.utils import dequantize_aef, quantize_aef
@@ -26,3 +27,21 @@ def test_quantize_roundtrip_keeps_nodata_dataarray_dask():
         back = quantize_aef(dequantize_aef(da)).compute()
     np.testing.assert_array_equal(back.values, raw)
     assert back.attrs["nodata"] == -128
+
+
+def test_dequantize_rejects_already_dequantized_float_input():
+    with pytest.raises(TypeError, match="already dequantized"):
+        dequantize_aef(np.array([0.5, -0.25], dtype=np.float32))
+
+
+def test_dequantize_float_codes_with_nan_gap_fill_still_work():
+    out = dequantize_aef(np.array([127.0, np.nan, -128.0, 0.0], dtype=np.float32))
+    np.testing.assert_array_equal(
+        out, np.array([(127 / 127.5) ** 2, np.nan, np.nan, 0.0], dtype=np.float32)
+    )
+
+
+@pytest.mark.parametrize("bad", [-150, 128, 300])
+def test_dequantize_rejects_out_of_range_codes(bad):
+    with pytest.raises(ValueError, match="within"):
+        dequantize_aef(np.array([0, bad], dtype=np.int16))
