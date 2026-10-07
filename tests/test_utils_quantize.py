@@ -54,11 +54,20 @@ def test_dequantize_wide_int_in_range_matches_int8():
     )
 
 
-def test_dequantize_rejects_float_dask_input_at_call_time():
+def test_dequantize_rejects_dequantized_float_dask_input_at_compute():
     import dask.array as da
     import xarray as xr
 
     lazy = xr.DataArray(da.from_array(np.array([0.25, 0.5], dtype=np.float32), chunks=1), dims="x")
+    with pytest.raises(TypeError, match="already dequantized"):
+        dequantize_aef(lazy).compute()  # float is validated per block
+
+
+def test_dequantize_rejects_bool_dask_input_at_call_time():
+    import dask.array as da
+    import xarray as xr
+
+    lazy = xr.DataArray(da.from_array(np.array([True, False]), chunks=1), dims="x")
     with pytest.raises(TypeError, match="already dequantized"):
         dequantize_aef(lazy)  # must not wait until .compute()
 

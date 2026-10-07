@@ -87,7 +87,7 @@ Everything upstream does still works the same way. The import name is still `aef
 </td></tr>
 </table>
 
-Details and measurements: [docs/CHANGES.md](docs/CHANGES.md) · [docs/PERFORMANCE.md](docs/PERFORMANCE.md) · [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
+Details and measurements: [docs/CHANGES.md](docs/CHANGES.md) · [docs/PERFORMANCE.md](docs/PERFORMANCE.md) · [docs/chip-benchmarks.md](docs/chip-benchmarks.md)
 
 ## 📦 Installation
 
@@ -249,7 +249,7 @@ ds = reproject_datatree(tree, target, resampling="bilinear").compute()
 
 For warm reads of 1024 px and larger chips, `chunks="all-bands"` (one dask task per stored block)
 is about **1.5–2× faster** than the default per-band `"native"` chunking. Sources and methods are in
-[docs/CHANGES.md](docs/CHANGES.md) and [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+[docs/CHANGES.md](docs/CHANGES.md) and [docs/chip-benchmarks.md](docs/chip-benchmarks.md).
 
 ## ☁️ Hosts
 

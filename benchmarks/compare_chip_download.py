@@ -242,7 +242,10 @@ def patch_obstore():
     obstore.get_ranges_async = my_get_ranges_async
 
 def get_peak_rss_bytes() -> int:
-    import psutil, os, sys
+    import os
+    import sys
+
+    import psutil
     try:
         p = psutil.Process(os.getpid())
         if sys.platform == "win32":
@@ -293,7 +296,7 @@ def spawn(method, size, env, manifest_dir=None, save=None) -> dict:
     started = perf_counter()
     proc = subprocess.run(cmd, env=env, cwd=env["AEF_INDEX_DIR"], capture_output=True, text=True)
     wall = perf_counter() - started
-    line = next((l for l in proc.stdout.splitlines() if l.startswith("RESULT ")), None)
+    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("RESULT ")), None)
     if proc.returncode or line is None:
         raise RuntimeError(f"{method} {size} failed:\n{proc.stdout}\n{proc.stderr}")
     result = json.loads(line[len("RESULT "):])

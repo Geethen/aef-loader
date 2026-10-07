@@ -1,6 +1,7 @@
 """Tests for Source Cooperative (S3) support in aef_loader."""
 
 import pytest
+
 from aef_loader.constants import (
     DataSource,
 )
@@ -66,7 +67,7 @@ class TestAEFIndexSourceCoop:
     async def test_source_coop_download_no_project_required(self, tmp_path):
         """Test that Source Coop download does not require GCP project."""
         # Create a cached file to avoid actual download
-        cache_file = tmp_path / "aef_index_source_coop.parquet"
+        cache_file = tmp_path / "aef_index_source_coop.v2.parquet"
         cache_file.touch()
 
         index = AEFIndex(source=DataSource.SOURCE_COOP, cache_dir=tmp_path)
@@ -81,7 +82,7 @@ class TestAEFIndexSourceCoop:
     async def test_query_populates_source(self, tmp_path, mock_source_coop_gdf):
         """Test that query populates source field on tiles."""
         # Save mock gdf
-        index_path = tmp_path / "aef_index_source_coop.parquet"
+        index_path = tmp_path / "aef_index_source_coop.v2.parquet"
         mock_source_coop_gdf.to_parquet(index_path)
 
         index = AEFIndex(source=DataSource.SOURCE_COOP, cache_dir=tmp_path)

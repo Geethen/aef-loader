@@ -56,6 +56,25 @@ Homepage = "https://github.com/Geethen/aef_loader_plus"
 Issues = "https://github.com/Geethen/aef_loader_plus/issues"
 Upstream = "https://github.com/jakenotjay/aef-loader"
 
+[dependency-groups]
+dev = [
+    "prek>=0.3.4",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff",
+    "ty",
+]
+docs = [
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
+bench-compare = [
+    "pytest-benchmark>=4.0.0",
+    "rioxarray>=0.21.0",
+    "xee>=0.0.24",
+    "rasteret>=0.3.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -69,7 +88,13 @@ include = ["aef_loader", "tests", "docs", "README.md", "LICENSE", "NOTICE"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = ["slow: hits real cloud data; run with pytest -m slow"]
+markers = [
+    "unit: Fast unit tests without external dependencies",
+    "integration: Integration tests that may require external services",
+    "requires_gcp: Tests that require authenticated GCP credentials",
+    "benchmark: Benchmarks comparing aef-loader against other loading tools",
+    "slow: Slow tests that hit real cloud data. Run manually with: uv run pytest -m slow",
+]
 
 [tool.ruff]
 target-version = "py312"

@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from aef_loader.reader import VirtualTiffReader, _parse_gcs_path
 
 

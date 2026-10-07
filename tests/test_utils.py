@@ -4,6 +4,7 @@ import dask.array as dask_array
 import numpy as np
 import pytest
 import xarray as xr
+
 from aef_loader.utils import (
     dequantize_aef,
     int8_to_float32,

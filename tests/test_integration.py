@@ -13,6 +13,7 @@ import os
 
 import numpy as np
 import pytest
+
 from aef_loader.constants import DataSource
 from aef_loader.index import AEFIndex
 from aef_loader.reader import VirtualTiffReader

@@ -72,10 +72,27 @@ def _dequantize_lut(
             else np.concatenate((lut[128:], lut[:128]))
         )
         return uint8_lut[raw_array.view(np.uint8)]
+    if raw_array.dtype.kind == "f":
+        # xarray's outer-join gap fill promotes int8 tiles to float with NaN in
+        # the gaps. Accept that, but only while every finite value is still an
+        # integer code; anything else is already-dequantized data.
+        finite = np.isfinite(raw_array)
+        codes = raw_array[finite]
+        if codes.size and (
+            (codes != np.round(codes)).any() or codes.min() < -128 or codes.max() > 127
+        ):
+            raise TypeError(
+                f"dequantize_aef expects integer-quantized data, got {raw_array.dtype} "
+                "with non-integer or out-of-range values; "
+                "float input looks already dequantized."
+            )
+        result = np.full(raw_array.shape, np.nan, dtype=np.float32)
+        result[finite] = lut[codes.astype(np.int16) + 128]
+        return result
     if raw_array.dtype.kind not in "iu":
         raise TypeError(
             f"dequantize_aef expects integer-quantized data, got {raw_array.dtype}; "
-            "float/bool input looks already dequantized."
+            "bool input looks already dequantized."
         )
     if raw_array.size and (raw_array.min() < -128 or raw_array.max() > 127):
         raise ValueError(
@@ -124,9 +141,9 @@ def dequantize_aef(
 
     if isinstance(data, xr.DataArray):
         array = data.data
-        # Check the dtype up front: for dask input the per-block check in
-        # _dequantize_lut would otherwise only fire at compute time.
-        if np.dtype(array.dtype).kind not in "iu":
+        # Reject impossible dtypes up front. Float is allowed (NaN gap-fill from
+        # outer joins); its values are validated per block in _dequantize_lut.
+        if np.dtype(array.dtype).kind not in "iuf":
             raise TypeError(
                 f"dequantize_aef expects integer-quantized data, got {array.dtype}; "
                 "float/bool input looks already dequantized."
